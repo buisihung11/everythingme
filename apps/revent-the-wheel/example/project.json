@@ -1,0 +1,8 @@
+{
+  "name": "revent-the-wheel-example",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/revent-the-wheel/example",
+  "projectType": "application",
+  "tags": ["scope:revent-the-wheel", "type:app", "category:revent-the-wheel"],
+  "targets": {}
+}

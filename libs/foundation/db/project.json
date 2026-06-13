@@ -1,0 +1,23 @@
+{
+  "name": "foundation-db",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/foundation/db/src",
+  "projectType": "library",
+  "tags": ["scope:foundation", "type:lib"],
+  "targets": {
+    "migrate": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "drizzle-kit migrate",
+        "cwd": "libs/foundation/db"
+      }
+    },
+    "generate": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "drizzle-kit generate",
+        "cwd": "libs/foundation/db"
+      }
+    }
+  }
+}

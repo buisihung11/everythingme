@@ -1,96 +1,106 @@
-# Everythingme
+# EverythingMe
 
-<a alt="Nx logo" href="https://nx.dev" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="45"></a>
+An all-in-one monorepo for personal software projects.
 
-✨ Your new, shiny [Nx workspace](https://nx.dev) is ready ✨.
+## What lives here
 
-[Learn more about this workspace setup and its capabilities](https://nx.dev/getting-started/intro#learn-nx?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects) or run `npx nx graph` to visually explore what was created. Now, let's get you up to speed!
+| Purpose | Location | `lessons/` required |
+|---|---|---|
+| Personal blog | [`apps/blog`](apps/blog) | Optional |
+| Re-event the wheel | [`apps/revent-the-wheel/<project>/`](apps/revent-the-wheel) | Yes |
+| Studying | [`apps/studying/<project>/`](apps/studying) | Yes |
+| Foundation libs | [`libs/foundation/`](libs/foundation) | No |
 
-## Run tasks
+Every project under `apps/` is grouped by category. Revent and study projects always keep a `lessons/` folder next to their source code.
 
-To run tasks with Nx use:
+## Tech stack
 
-```sh
-npx nx <target> <project-name>
+- **Monorepo:** Nx + pnpm workspaces
+- **Blog app:** TanStack Start, TanStack Router/Query
+- **Content:** Fumadocs MDX
+- **Auth:** Better Auth
+- **Database:** PostgreSQL + Drizzle ORM
+- **Shared libs:** `@everythingme/{config,db,auth,ui}`
+
+## Getting started
+
+### 1. Install dependencies
+
+```bash
+pnpm install
 ```
 
-For example:
+### 2. Start PostgreSQL
 
-```sh
-npx nx build myproject
+PostgreSQL runs on port **5433** locally (mapped from container 5432) to avoid conflicts with an existing Postgres on 5432.
+
+```bash
+docker compose up -d
 ```
 
-These targets are either [inferred automatically](https://nx.dev/concepts/inferred-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or defined in the `project.json` or `package.json` files.
+### 3. Configure environment
 
-[More about running tasks in the docs &raquo;](https://nx.dev/features/run-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Add new projects
-
-While you could add new projects to your workspace manually, you might want to leverage [Nx plugins](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) and their [code generation](https://nx.dev/features/generate-code?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) feature.
-
-To install a new plugin you can use the `nx add` command. Here's an example of adding the React plugin:
-```sh
-npx nx add @nx/react
+```bash
+cp .env.example apps/blog/.env
+# Edit BETTER_AUTH_SECRET — generate with: openssl rand -base64 32
 ```
 
-Use the plugin's generator to create new projects. For example, to create a new React app or library:
+### 4. Run database migrations
 
-```sh
-# Generate an app
-npx nx g @nx/react:app demo
-
-# Generate a library
-npx nx g @nx/react:lib some-lib
+```bash
+pnpm nx run foundation-db:migrate
 ```
 
-You can use `npx nx list` to get a list of installed plugins. Then, run `npx nx list <plugin-name>` to learn about more specific capabilities of a particular plugin. Alternatively, [install Nx Console](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) to browse plugins and generators in your IDE.
+### 5. Start the blog
 
-[Learn more about Nx plugins &raquo;](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) | [Browse the plugin registry &raquo;](https://nx.dev/plugin-registry?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Set up CI!
-
-### Step 1
-
-To connect to Nx Cloud, run the following command:
-
-```sh
-npx nx connect
+```bash
+pnpm nx dev blog
 ```
 
-Connecting to Nx Cloud ensures a [fast and scalable CI](https://nx.dev/ci/intro/why-nx-cloud?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) pipeline. It includes features such as:
+Open [http://localhost:3000](http://localhost:3000).
 
-- [Remote caching](https://nx.dev/ci/features/remote-cache?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task distribution across multiple machines](https://nx.dev/ci/features/distribute-task-execution?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Automated e2e test splitting](https://nx.dev/ci/features/split-e2e-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task flakiness detection and rerunning](https://nx.dev/ci/features/flaky-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+## Common commands
 
-### Step 2
-
-Use the following command to configure a CI workflow for your workspace:
-
-```sh
-npx nx g ci-workflow
+```bash
+pnpm nx dev blog              # Start blog dev server
+pnpm nx build blog            # Production build
+pnpm nx graph                 # Visualize project graph
+pnpm nx show projects         # List all Nx projects
 ```
 
-[Learn more about Nx on CI](https://nx.dev/ci/intro/ci-with-nx#ready-get-started-with-your-provider?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+## Adding a new project
 
-## Install Nx Console
+### Re-event the wheel
 
-Nx Console is an editor extension that enriches your developer experience. It lets you run tasks, generate code, and improves code autocompletion in your IDE. It is available for VSCode and IntelliJ.
+```bash
+cp -R apps/revent-the-wheel/example apps/revent-the-wheel/my-project
+```
 
-[Install Nx Console &raquo;](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+Then scaffold your app inside `apps/revent-the-wheel/my-project/` and document in `lessons/`.
 
-## Useful links
+### Studying
 
-Learn more:
+```bash
+cp -R apps/studying/example apps/studying/my-experiment
+```
 
-- [Learn more about this workspace setup](https://nx.dev/getting-started/intro#learn-nx?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects)
-- [Learn about Nx on CI](https://nx.dev/ci/intro/ci-with-nx?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Releasing Packages with Nx release](https://nx.dev/features/manage-releases?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [What are Nx plugins?](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+Build the smallest app that exercises the technology and write lessons as you go.
 
-And join the Nx community:
-- [Discord](https://go.nx.dev/community)
-- [Follow us on X](https://twitter.com/nxdevtools) or [LinkedIn](https://www.linkedin.com/company/nrwl)
-- [Our Youtube channel](https://www.youtube.com/@nxdevtools)
-- [Our blog](https://nx.dev/blog?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+## Foundation libraries
+
+- `@everythingme/config` — Zod env validation
+- `@everythingme/db` — Drizzle client and auth schema
+- `@everythingme/auth` — Better Auth instance
+- `@everythingme/ui` — Shared shadcn/ui components (`Button`, `Card`, `cn` utility)
+
+Import these from any app in the monorepo. Add more shadcn components to `libs/foundation/ui` with:
+
+```bash
+cd libs/foundation/ui && pnpm dlx shadcn@latest add badge
+```
+
+Or from the blog app (components land in the shared UI package):
+
+```bash
+cd apps/blog && pnpm dlx shadcn@latest add badge
+```

@@ -1,0 +1,8 @@
+{
+  "name": "foundation-auth",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/foundation/auth/src",
+  "projectType": "library",
+  "tags": ["scope:foundation", "type:lib"],
+  "targets": {}
+}

@@ -1,0 +1,8 @@
+{
+  "name": "foundation-config",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/foundation/config/src",
+  "projectType": "library",
+  "tags": ["scope:foundation", "type:lib"],
+  "targets": {}
+}

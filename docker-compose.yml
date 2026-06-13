@@ -1,0 +1,17 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: everythingme-postgres
+    restart: unless-stopped
+    ports:
+      - '5433:5432'
+    environment:
+      POSTGRES_USER: everythingme
+      POSTGRES_PASSWORD: everythingme
+      POSTGRES_DB: everythingme
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./tools/docker/postgres-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+
+volumes:
+  postgres_data:

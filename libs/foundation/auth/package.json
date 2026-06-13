@@ -1,0 +1,13 @@
+{
+  "name": "@everythingme/auth",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "dependencies": {
+    "@everythingme/config": "workspace:*",
+    "@everythingme/db": "workspace:*",
+    "better-auth": "^1.3.27"
+  }
+}

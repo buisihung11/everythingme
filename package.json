@@ -2,12 +2,20 @@
   "name": "@everythingme/source",
   "version": "0.0.0",
   "license": "MIT",
-  "scripts": {},
+  "scripts": {
+    "dev": "nx dev blog",
+    "build": "nx build blog",
+    "graph": "nx graph"
+  },
   "private": true,
+  "packageManager": "pnpm@10.12.1",
   "dependencies": {},
   "devDependencies": {
     "@nx/js": "22.7.5",
+    "@nx/react": "22.7.5",
+    "@nx/vite": "22.7.5",
     "@nx/workspace": "22.7.5",
-    "nx": "22.7.5"
+    "nx": "22.7.5",
+    "typescript": "catalog:"
   }
 }
