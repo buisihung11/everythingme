@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" role="img" aria-label="TanStack Start">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#eff6ff"/>
+      <stop offset="100%" stop-color="#1d4ed8"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="500" fill="url(#bg)"/>
+  <g transform="translate(250 120)">
+    <path d="M0 120 L150 0 L300 120 L150 240 Z" fill="#0f172a" opacity="0.9"/>
+    <path d="M75 120 L150 60 L225 120 L150 180 Z" fill="#2563eb"/>
+    <circle cx="150" cy="120" r="18" fill="#60a5fa"/>
+  </g>
+  <rect x="180" y="390" width="440" height="10" rx="5" fill="#0f172a" opacity="0.15"/>
+  <rect x="220" y="410" width="360" height="8" rx="4" fill="#0f172a" opacity="0.1"/>
+</svg>

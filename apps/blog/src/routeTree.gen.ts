@@ -11,6 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as TechnicalIndexRouteImport } from './routes/technical/index'
+import { Route as PersonalIndexRouteImport } from './routes/personal/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as BlogSplatRouteImport } from './routes/blog/$'
 import { Route as ApiSearchRouteImport } from './routes/api/search'
@@ -24,6 +26,16 @@ const AboutRoute = AboutRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TechnicalIndexRoute = TechnicalIndexRouteImport.update({
+  id: '/technical/',
+  path: '/technical/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PersonalIndexRoute = PersonalIndexRouteImport.update({
+  id: '/personal/',
+  path: '/personal/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
@@ -53,6 +65,8 @@ export interface FileRoutesByFullPath {
   '/api/search': typeof ApiSearchRoute
   '/blog/$': typeof BlogSplatRoute
   '/admin/': typeof AdminIndexRoute
+  '/personal/': typeof PersonalIndexRoute
+  '/technical/': typeof TechnicalIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesByTo {
@@ -61,6 +75,8 @@ export interface FileRoutesByTo {
   '/api/search': typeof ApiSearchRoute
   '/blog/$': typeof BlogSplatRoute
   '/admin': typeof AdminIndexRoute
+  '/personal': typeof PersonalIndexRoute
+  '/technical': typeof TechnicalIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesById {
@@ -70,6 +86,8 @@ export interface FileRoutesById {
   '/api/search': typeof ApiSearchRoute
   '/blog/$': typeof BlogSplatRoute
   '/admin/': typeof AdminIndexRoute
+  '/personal/': typeof PersonalIndexRoute
+  '/technical/': typeof TechnicalIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRouteTypes {
@@ -80,9 +98,19 @@ export interface FileRouteTypes {
     | '/api/search'
     | '/blog/$'
     | '/admin/'
+    | '/personal/'
+    | '/technical/'
     | '/api/auth/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/about' | '/api/search' | '/blog/$' | '/admin' | '/api/auth/$'
+  to:
+    | '/'
+    | '/about'
+    | '/api/search'
+    | '/blog/$'
+    | '/admin'
+    | '/personal'
+    | '/technical'
+    | '/api/auth/$'
   id:
     | '__root__'
     | '/'
@@ -90,6 +118,8 @@ export interface FileRouteTypes {
     | '/api/search'
     | '/blog/$'
     | '/admin/'
+    | '/personal/'
+    | '/technical/'
     | '/api/auth/$'
   fileRoutesById: FileRoutesById
 }
@@ -99,6 +129,8 @@ export interface RootRouteChildren {
   ApiSearchRoute: typeof ApiSearchRoute
   BlogSplatRoute: typeof BlogSplatRoute
   AdminIndexRoute: typeof AdminIndexRoute
+  PersonalIndexRoute: typeof PersonalIndexRoute
+  TechnicalIndexRoute: typeof TechnicalIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
@@ -116,6 +148,20 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/technical/': {
+      id: '/technical/'
+      path: '/technical'
+      fullPath: '/technical/'
+      preLoaderRoute: typeof TechnicalIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/personal/': {
+      id: '/personal/'
+      path: '/personal'
+      fullPath: '/personal/'
+      preLoaderRoute: typeof PersonalIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/': {
@@ -155,6 +201,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSearchRoute: ApiSearchRoute,
   BlogSplatRoute: BlogSplatRoute,
   AdminIndexRoute: AdminIndexRoute,
+  PersonalIndexRoute: PersonalIndexRoute,
+  TechnicalIndexRoute: TechnicalIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport

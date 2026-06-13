@@ -1,0 +1,53 @@
+---
+title: Why I Love TypeScript After Years of Fighting It
+description: I resisted TypeScript for a long time. Then I shipped a large project with it and never looked back. Here's what changed my mind.
+date: 2026-06-01
+type: technical
+category: web-development
+readTime: 6
+thumbnail: /thumbnails/why-i-love-typescript.svg
+---
+
+I want to tell you about the exact moment TypeScript won me over. It was 2 AM, three days before a deadline, and I was staring at a runtime error that said `Cannot read properties of undefined`. The kind of error that makes you question every life decision that led to this moment.
+
+What I didn't know was that TypeScript would have caught it — statically, silently, before any code ran.
+
+## The Resistance Phase
+
+For years, my argument was simple: *JavaScript is dynamic for a reason.* Types feel like bureaucracy. You write more code to do the same thing. You fight the compiler instead of shipping.
+
+This isn't wrong. TypeScript *does* add friction. But I was confusing *all* friction with *bad* friction.
+
+## What Actually Changed
+
+The turning point was working on a medium-sized codebase (around 40k lines) with three other developers over six months. Without TypeScript:
+
+- Renaming a function meant grep + prayer
+- API response shapes lived in comments nobody updated
+- Onboarding a new dev meant two weeks of "just ask me what the shape of this object is"
+
+With TypeScript, the code became self-documenting in a way that actually stays current. Your editor knows what a `User` object contains. Your refactors are safe. Your collaborators can read unfamiliar code without constant context-switching.
+
+## The Practical Bits
+
+Here's a pattern I use constantly now — discriminated unions for state:
+
+```typescript
+type AsyncState<T> =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'success'; data: T }
+  | { status: 'error'; error: Error }
+```
+
+This forces you to handle every case. No more `if (data)` checks that silently skip error states.
+
+## Where It Still Hurts
+
+I won't pretend it's perfect. The escape hatches (`any`, `as unknown as Foo`) are too easy to reach for under deadline pressure. The error messages for complex generics are famously unreadable. And `strict` mode on a brownfield codebase is a multi-week adventure.
+
+But these are solvable problems. The alternative — untyped JavaScript at scale — is an unsolvable one.
+
+## The Bottom Line
+
+TypeScript didn't make me a better programmer overnight. It made the feedback loop tighter. When the gap between "I wrote a bug" and "I discovered that bug" collapses from days to seconds, you write differently. You think in types. And eventually, it stops feeling like fighting the compiler and starts feeling like having a very patient co-author.

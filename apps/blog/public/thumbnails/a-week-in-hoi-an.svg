@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" role="img" aria-label="HÙi An travel">
+  <defs>
+    <linearGradient id="sky" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f6d7a8"/>
+      <stop offset="100%" stop-color="#e8924f"/>
+    </linearGradient>
+    <linearGradient id="water" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#f0c987"/>
+      <stop offset="100%" stop-color="#c2793a"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="500" fill="url(#sky)"/>
+  <rect y="320" width="800" height="180" fill="url(#water)"/>
+  <circle cx="650" cy="90" r="55" fill="#fff3dc" opacity="0.85"/>
+  <path d="M120 320 Q220 280 320 320 T520 320 T720 320 L720 500 L120 500 Z" fill="#8a4a1a" opacity="0.25"/>
+  <rect x="180" y="250" width="90" height="70" rx="4" fill="#fff8ef" opacity="0.9"/>
+  <rect x="290" y="235" width="70" height="85" rx="4" fill="#fff8ef" opacity="0.85"/>
+  <rect x="380" y="260" width="80" height="60" rx="4" fill="#fff8ef" opacity="0.8"/>
+  <circle cx="220" cy="285" r="8" fill="#e8924f"/>
+  <circle cx="325" cy="270" r="8" fill="#e8924f"/>
+  <circle cx="420" cy="290" r="8" fill="#e8924f"/>
+</svg>

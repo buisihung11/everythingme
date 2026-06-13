@@ -1,0 +1,57 @@
+---
+title: Building Full-Stack Apps with TanStack Start
+description: TanStack Start brings server functions, SSR, and type-safe routing to React. Here's what it looks like to build something real with it.
+date: 2026-06-10
+type: technical
+category: web-development
+readTime: 8
+thumbnail: /thumbnails/building-with-tanstack.svg
+---
+
+When I first heard "TanStack Start," I assumed it was another meta-framework chasing Next.js. After building with it for a few months, I think it's something more interesting: a framework that trusts you.
+
+## What TanStack Start Actually Is
+
+At its core, TanStack Start is TanStack Router (already excellent) plus a thin server layer that gives you:
+
+1. **Server functions** via `createServerFn` — typed RPC without the ceremony
+2. **SSR** that works with the router's loader system
+3. **Streaming** out of the box
+
+The philosophy is that the framework should stay out of your way. There's no `app` directory, no special file conventions beyond the route tree, no magic.
+
+## The Part I Like Most: Server Functions
+
+```typescript
+const getUser = createServerFn({ method: 'GET' })
+  .validator(z.object({ id: z.string() }))
+  .handler(async ({ data }) => {
+    return db.users.findUnique({ where: { id: data.id } })
+  })
+```
+
+Call it from a route loader. Call it from a form submission. It's just a function. The type flows end-to-end: your database schema → your server function → your component, with TypeScript tracking everything.
+
+## What the Route Looks Like
+
+```tsx
+export const Route = createFileRoute('/users/$id')({
+  loader: async ({ params }) => {
+    return await getUser({ data: { id: params.id } })
+  },
+  component: function UserPage() {
+    const user = Route.useLoaderData()
+    return <div>{user.name}</div>
+  },
+})
+```
+
+No `getServerSideProps`. No API routes to wire up separately. The loader *is* the server code.
+
+## The Trade-offs
+
+TanStack Start is newer than Next.js, and it shows in places. The ecosystem is smaller. Some integrations require more setup. The documentation assumes you already know TanStack Router.
+
+But for greenfield projects where you want full type safety from database to UI, and where you don't need the Next.js ecosystem specifically, it's become my first choice.
+
+The primitives are small, composable, and honest about what they do. That's getting rarer.

@@ -1,0 +1,5 @@
+{
+  "title": "Technical",
+  "description": "Deep dives, architecture thoughts, and things I learned building software.",
+  "pages": ["web-development", "system-design", "devops"]
+}

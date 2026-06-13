@@ -4,6 +4,7 @@ import { TanStackDevtools } from '@tanstack/react-devtools'
 import { RootProvider } from 'fumadocs-ui/provider/tanstack'
 import Footer from '../components/Footer'
 import Header from '../components/Header'
+import { BlogSiteProvider } from '../components/BlogSiteContext'
 
 import appCss from '../styles.css?url'
 
@@ -20,7 +21,7 @@ export const Route = createRootRoute({
         content: 'width=device-width, initial-scale=1',
       },
       {
-        title: 'EverythingMe',
+        title: 'everything-blog',
       },
     ],
     links: [
@@ -42,9 +43,11 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body className="font-sans antialiased [overflow-wrap:anywhere] selection:bg-[rgba(79,184,178,0.24)]">
         <RootProvider>
-          <Header />
-          {children}
-          <Footer />
+          <BlogSiteProvider>
+            <Header />
+            {children}
+            <Footer />
+          </BlogSiteProvider>
         </RootProvider>
         <TanStackDevtools
           config={{

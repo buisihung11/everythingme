@@ -3,7 +3,14 @@
   "compilerOptions": {
     "outDir": "../../../dist/out-tsc/libs/foundation/ui",
     "declaration": true,
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "@everythingme/ui/components/*": ["src/components/*"],
+      "@everythingme/ui/lib/*": ["src/lib/*"],
+      "@everythingme/ui/hooks": ["src/hooks/index.ts"],
+      "@everythingme/ui/hooks/*": ["src/hooks/*"]
+    }
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],
   "exclude": ["node_modules", "dist"]

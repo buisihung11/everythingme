@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 750" role="img" aria-label="A boat in progress">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fff4e6"/>
+      <stop offset="100%" stop-color="#e8b67a"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="750" fill="url(#bg)"/>
+  <rect x="180" y="120" width="840" height="480" rx="18" fill="#f7ead8" stroke="#d7a56d" stroke-width="4"/>
+  <path d="M260 420 Q600 300 940 420 L900 520 Q600 470 300 520 Z" fill="#c2793a" opacity="0.75"/>
+  <rect x="260" y="180" width="680" height="18" rx="9" fill="#8a4a1a" opacity="0.18"/>
+  <rect x="260" y="230" width="620" height="12" rx="6" fill="#8a4a1a" opacity="0.14"/>
+  <rect x="260" y="270" width="560" height="12" rx="6" fill="#8a4a1a" opacity="0.12"/>
+  <circle cx="880" cy="560" r="42" fill="#fff8ef" opacity="0.85"/>
+</svg>

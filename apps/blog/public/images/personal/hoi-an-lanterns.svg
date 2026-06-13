@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 750" role="img" aria-label="Lanterns over the river">
+  <defs>
+    <linearGradient id="night" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#5c2f14"/>
+      <stop offset="100%" stop-color="#2a1408"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="750" fill="url(#night)"/>
+  <rect y="500" width="1200" height="250" fill="#140a05" opacity="0.8"/>
+  <ellipse cx="420" cy="560" rx="90" ry="28" fill="#ffb347" opacity="0.35"/>
+  <ellipse cx="760" cy="580" rx="70" ry="22" fill="#ff8f47" opacity="0.28"/>
+  <line x1="250" y1="180" x2="950" y2="180" stroke="#ffb347" stroke-width="3" opacity="0.5"/>
+  <circle cx="320" cy="180" r="16" fill="#ffb347"/>
+  <circle cx="480" cy="180" r="16" fill="#ff9f47"/>
+  <circle cx="640" cy="180" r="16" fill="#ffb347"/>
+  <circle cx="800" cy="180" r="16" fill="#ff8f47"/>
+  <rect x="350" y="260" width="500" height="180" rx="8" fill="#3b2412" opacity="0.75"/>
+</svg>
