@@ -8,6 +8,8 @@ import { nitro } from 'nitro/vite'
 import path from 'node:path'
 import { docs } from './source.config.ts'
 
+const isVercelBuild = Boolean(process.env.VERCEL || process.env.CI)
+
 const config = defineConfig({
   root: path.resolve(__dirname),
   resolve: {
@@ -31,6 +33,9 @@ const config = defineConfig({
       ),
     },
   },
+  ssr: {
+    external: ['tslib'],
+  },
   plugins: [
     devtools({ removeDevtoolsOnBuild: true }),
     tailwindcss(),
@@ -41,9 +46,17 @@ const config = defineConfig({
       { index: false },
     ),
     tanstackStart(),
-    nitro({
-      preset: process.env.VERCEL || process.env.CI ? 'vercel' : undefined,
-    }),
+    nitro(
+      isVercelBuild
+        ? {
+            preset: 'vercel',
+            traceDeps: ['tslib*'],
+            vercel: {
+              entryFormat: 'node',
+            },
+          }
+        : {},
+    ),
     viteReact(),
   ],
 })
