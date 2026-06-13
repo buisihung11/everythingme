@@ -4,6 +4,7 @@ import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import mdx from 'fumadocs-mdx/vite'
 import viteReact from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import { nitro } from 'nitro/vite'
 import path from 'node:path'
 import { docs } from './source.config.ts'
 
@@ -31,7 +32,7 @@ const config = defineConfig({
     },
   },
   plugins: [
-    devtools(),
+    devtools({ removeDevtoolsOnBuild: true }),
     tailwindcss(),
     mdx(
       Promise.resolve({
@@ -40,6 +41,7 @@ const config = defineConfig({
       { index: false },
     ),
     tanstackStart(),
+    nitro(),
     viteReact(),
   ],
 })
