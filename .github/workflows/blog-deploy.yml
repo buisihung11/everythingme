@@ -21,6 +21,8 @@ concurrency:
 env:
   VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
   VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+  VERCEL: '1'
+  CI: true
 
 jobs:
   deploy:
@@ -50,7 +52,12 @@ jobs:
         run: pnpm nx test blog
 
       - name: Build application
-        run: VERCEL=1 pnpm nx build blog --skip-nx-cache
+        working-directory: apps/blog
+        run: pnpm build
+
+      - name: Verify Vercel build output
+        working-directory: apps/blog
+        run: test -d .vercel/output
 
       - name: Install Vercel CLI
         run: pnpm add -g vercel@latest

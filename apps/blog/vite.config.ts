@@ -41,7 +41,9 @@ const config = defineConfig({
       { index: false },
     ),
     tanstackStart(),
-    nitro(),
+    nitro({
+      preset: process.env.VERCEL || process.env.CI ? 'vercel' : undefined,
+    }),
     viteReact(),
   ],
 })
