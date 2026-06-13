@@ -49,18 +49,13 @@ jobs:
       - name: Run tests
         run: pnpm nx test blog
 
+      - name: Build application
+        run: VERCEL=1 pnpm nx build blog --skip-nx-cache
+
       - name: Install Vercel CLI
         run: pnpm add -g vercel@latest
 
-      - name: Pull Vercel Environment Information
-        working-directory: apps/blog
-        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
-
-      - name: Build Project Artifacts
-        working-directory: apps/blog
-        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
-
-      - name: Deploy Project Artifacts to Vercel
+      - name: Deploy to Vercel
         id: deploy
         working-directory: apps/blog
         run: |
