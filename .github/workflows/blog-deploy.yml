@@ -59,6 +59,11 @@ jobs:
         working-directory: apps/blog
         run: test -d .vercel/output
 
+      - name: Stage prebuilt output for Vercel CLI
+        run: |
+          mkdir -p .vercel
+          cp -r apps/blog/.vercel/output .vercel/output
+
       - name: Install Vercel CLI
         run: pnpm add -g vercel@latest
 
