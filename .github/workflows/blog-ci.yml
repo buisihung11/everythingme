@@ -20,6 +20,10 @@ jobs:
     name: Lint, test, and build
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: read
+      pull-requests: write
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -41,39 +45,11 @@ jobs:
       - name: Run tests with coverage
         run: pnpm nx test:coverage blog
 
-      - name: Upload coverage report
-        uses: actions/upload-artifact@v4
+      - name: Report coverage
+        if: always()
+        uses: davelosert/vitest-coverage-report-action@v2
         with:
-          name: blog-coverage
-          path: apps/blog/coverage/
-          retention-days: 14
-
-      - name: Coverage summary
-        run: |
-          node --input-type=module <<'EOF'
-          import { appendFileSync, readFileSync } from 'node:fs';
-
-          const summary = JSON.parse(
-            readFileSync('apps/blog/coverage/coverage-summary.json', 'utf8'),
-          ).total;
-
-          const line = (label, metric) =>
-            `- ${label}: ${metric.pct}% (${metric.covered}/${metric.total})`;
-
-          const body = [
-            '## Blog test coverage',
-            line('Statements', summary.statements),
-            line('Branches', summary.branches),
-            line('Functions', summary.functions),
-            line('Lines', summary.lines),
-          ].join('\n');
-
-          console.log(body);
-
-          if (process.env.GITHUB_STEP_SUMMARY) {
-            appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${body}\n`);
-          }
-          EOF
+          working-directory: apps/blog
 
       - name: Build
         run: pnpm nx build blog --skip-nx-cache
