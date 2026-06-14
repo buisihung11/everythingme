@@ -69,8 +69,19 @@ jobs:
 
       - name: Deploy to Vercel
         id: deploy
+        env:
+          # Production app secrets — configure in GitHub → Settings → Environments → production
+          UNSPLASH_ACCESS_KEY: ${{ secrets.UNSPLASH_ACCESS_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+          BETTER_AUTH_URL: ${{ secrets.BETTER_AUTH_URL }}
         run: |
-          url=$(vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }})
+          url=$(vercel deploy --prebuilt --prod \
+            --token=${{ secrets.VERCEL_TOKEN }} \
+            --env "UNSPLASH_ACCESS_KEY=${UNSPLASH_ACCESS_KEY}" \
+            --env "DATABASE_URL=${DATABASE_URL}" \
+            --env "BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}" \
+            --env "BETTER_AUTH_URL=${BETTER_AUTH_URL}")
           echo "url=$url" >> "$GITHUB_OUTPUT"
 
       - name: Deployment summary
