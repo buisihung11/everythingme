@@ -1,3 +1,4 @@
+import { Analytics } from '@vercel/analytics/react'
 import { HeadContent, Scripts, createRootRouteWithContext } from '@tanstack/react-router'
 import type { QueryClient } from '@tanstack/react-query'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
@@ -64,6 +65,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           ]}
         />
         <Scripts />
+        <Analytics />
       </body>
     </html>
   )
