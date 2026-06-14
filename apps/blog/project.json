@@ -33,6 +33,13 @@
         "command": "pnpm test",
         "cwd": "apps/blog"
       }
+    },
+    "test:coverage": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm test:coverage",
+        "cwd": "apps/blog"
+      }
     }
   }
 }

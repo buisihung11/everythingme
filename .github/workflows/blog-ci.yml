@@ -20,6 +20,10 @@ jobs:
     name: Lint, test, and build
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: read
+      pull-requests: write
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -38,8 +42,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run tests
-        run: pnpm nx test blog
+      - name: Run tests with coverage
+        run: pnpm nx run blog:test:coverage
+
+      - name: Report coverage
+        if: always()
+        uses: davelosert/vitest-coverage-report-action@v2
+        with:
+          working-directory: apps/blog
 
       - name: Build
         run: pnpm nx build blog --skip-nx-cache

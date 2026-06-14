@@ -13,7 +13,8 @@
     "prebuild": "fumadocs-mdx",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "vitest run --config vitest.config.ts"
+    "test": "vitest run --config vitest.config.ts",
+    "test:coverage": "vitest run --config vitest.config.ts --coverage.enabled true"
   },
   "dependencies": {
     "@everythingme/auth": "workspace:*",
@@ -51,6 +52,7 @@
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^6.0.1",
+    "@vitest/coverage-v8": "^4.1.8",
     "jsdom": "^28.1.0",
     "typescript": "catalog:",
     "vite": "^8.0.0",
