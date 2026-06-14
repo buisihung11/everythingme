@@ -1,31 +1,21 @@
 import defaultMdxComponents from 'fumadocs-ui/mdx'
 import type { MDXComponents } from 'mdx/types'
 import type { ImgHTMLAttributes } from 'react'
+import { Image } from '@/components/mdx/Image'
 
 function PersonalImage({
   alt,
-  ...props
+  src,
 }: ImgHTMLAttributes<HTMLImageElement>) {
-  return (
-    <figure className="personal-image my-8">
-      <img
-        {...props}
-        alt={alt ?? ''}
-        className="w-full rounded-[1.25rem] object-cover"
-        loading="lazy"
-      />
-      {alt ? (
-        <figcaption className="mt-3 text-center text-sm text-[var(--blog-ink-soft,var(--sea-ink-soft))]">
-          {alt}
-        </figcaption>
-      ) : null}
-    </figure>
-  )
+  if (!src) return null
+
+  return <Image src={src} alt={alt ?? ''} />
 }
 
 export function getMDXComponents(components?: MDXComponents) {
   return {
     ...defaultMdxComponents,
+    Image,
     img: PersonalImage,
     ...components,
   } satisfies MDXComponents

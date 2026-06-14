@@ -16,10 +16,12 @@ import { useMDXComponents } from '@/components/mdx'
 import PersonalArticleLayout, {
   personalClientLoader,
 } from '@/components/PersonalArticleLayout'
+import { BlogPostTransitionProvider, useBlogPostUrl } from '@/components/BlogPostTransitionContext'
 import {
   filterPageTreeForType,
   getBlogTypeFromSlugs,
 } from '@/lib/blog'
+import { getPostTransitionNames } from '#/lib/view-transitions'
 
 export const Route = createFileRoute('/blog/$')({
   component: Page,
@@ -48,6 +50,7 @@ const serverLoader = createServerFn({
     if (blogType === 'personal') {
       return {
         path: page.path,
+        url: page.url,
         blogType,
         pageTree: null,
       }
@@ -60,6 +63,7 @@ const serverLoader = createServerFn({
 
     return {
       path: page.path,
+      url: page.url,
       blogType,
       pageTree: await blogSource.serializePageTree(
         filteredTree as ReturnType<typeof blogSource.getPageTree>,
@@ -69,9 +73,20 @@ const serverLoader = createServerFn({
 
 const technicalClientLoader = browserCollections.docs.createClientLoader({
   component({ toc, frontmatter, default: MDX }) {
+    const postUrl = useBlogPostUrl()
+    const transitionNames = postUrl ? getPostTransitionNames(postUrl) : null
+
     return (
       <DocsPage toc={toc}>
-        <DocsTitle>{frontmatter.title}</DocsTitle>
+        <DocsTitle
+          style={
+            transitionNames
+              ? { viewTransitionName: transitionNames.title }
+              : undefined
+          }
+        >
+          {frontmatter.title}
+        </DocsTitle>
         <DocsDescription>{frontmatter.description}</DocsDescription>
         <DocsBody>
           <MDX components={useMDXComponents()} />
@@ -83,14 +98,19 @@ const technicalClientLoader = browserCollections.docs.createClientLoader({
 
 function Page() {
   const data = useFumadocsLoader(Route.useLoaderData())
+  const transitionNames = getPostTransitionNames(data.url)
 
   if (data.blogType === 'personal') {
-    return <PersonalArticleLayout path={data.path} />
+    return <PersonalArticleLayout path={data.path} url={data.url} />
   }
 
   return (
-    <DocsLayout {...baseOptions(data.blogType)} tree={data.pageTree!}>
-      <Suspense>{technicalClientLoader.useContent(data.path)}</Suspense>
-    </DocsLayout>
+    <div style={{ viewTransitionName: transitionNames.page }}>
+      <DocsLayout {...baseOptions(data.blogType)} tree={data.pageTree!}>
+        <BlogPostTransitionProvider url={data.url}>
+          <Suspense>{technicalClientLoader.useContent(data.path)}</Suspense>
+        </BlogPostTransitionProvider>
+      </DocsLayout>
+    </div>
   )
 }

@@ -1,5 +1,9 @@
 import { Link } from '@tanstack/react-router'
 import type { PostMeta } from '#/lib/blog-posts'
+import {
+  BLOG_POST_OPEN_TRANSITION,
+  getPostTransitionNames,
+} from '#/lib/view-transitions'
 
 interface PostCardProps {
   post: PostMeta
@@ -35,9 +39,11 @@ export function PostCard({ post, variant }: PostCardProps) {
 function PostThumbnail({
   post,
   variant,
+  transitionName,
 }: {
   post: PostMeta
   variant: 'personal' | 'technical'
+  transitionName?: string
 }) {
   return (
     <div
@@ -45,6 +51,7 @@ function PostThumbnail({
         'relative overflow-hidden',
         variant === 'personal' ? 'mb-5 aspect-[16/10] rounded-xl' : 'mb-4 aspect-[16/9] rounded-lg',
       ].join(' ')}
+      style={transitionName ? { viewTransitionName: transitionName } : undefined}
     >
       <img
         src={post.thumbnail}
@@ -65,11 +72,14 @@ function PostThumbnail({
 }
 
 function PersonalPostCard({ post }: { post: PostMeta }) {
+  const transitionNames = getPostTransitionNames(post.url)
+
   return (
     <Link
       to="/blog/$"
       params={{ _splat: getPostSplat(post.url) }}
       className="group block no-underline"
+      viewTransition={{ types: [BLOG_POST_OPEN_TRANSITION] }}
     >
       <article
         className="h-full rounded-2xl border p-6 transition-all duration-200 group-hover:-translate-y-1"
@@ -81,7 +91,11 @@ function PersonalPostCard({ post }: { post: PostMeta }) {
             '0 2px 0 rgba(255,255,255,0.6) inset, 0 12px 32px rgba(120,70,20,0.08)',
         }}
       >
-        <PostThumbnail post={post} variant="personal" />
+        <PostThumbnail
+          post={post}
+          variant="personal"
+          transitionName={transitionNames.thumbnail}
+        />
 
         <div className="mb-3 flex items-center gap-2">
           <span
@@ -97,7 +111,10 @@ function PersonalPostCard({ post }: { post: PostMeta }) {
 
         <h2
           className="blog-heading-font mb-3 text-xl font-bold leading-snug"
-          style={{ color: 'var(--blog-ink)' }}
+          style={{
+            color: 'var(--blog-ink)',
+            viewTransitionName: transitionNames.title,
+          }}
         >
           {post.title}
         </h2>
@@ -129,11 +146,14 @@ function PersonalPostCard({ post }: { post: PostMeta }) {
 }
 
 function TechnicalPostCard({ post }: { post: PostMeta }) {
+  const transitionNames = getPostTransitionNames(post.url)
+
   return (
     <Link
       to="/blog/$"
       params={{ _splat: getPostSplat(post.url) }}
       className="group block no-underline"
+      viewTransition={{ types: [BLOG_POST_OPEN_TRANSITION] }}
     >
       <article
         className="h-full overflow-hidden rounded-xl border transition-all duration-200 group-hover:border-[var(--blog-accent-light)] group-hover:shadow-md"
@@ -142,7 +162,11 @@ function TechnicalPostCard({ post }: { post: PostMeta }) {
           background: 'var(--blog-surface-strong)',
         }}
       >
-        <PostThumbnail post={post} variant="technical" />
+        <PostThumbnail
+          post={post}
+          variant="technical"
+          transitionName={transitionNames.thumbnail}
+        />
 
         <div className="p-5 pt-0">
           <div className="mb-3 flex items-center justify-between gap-2">
@@ -167,7 +191,10 @@ function TechnicalPostCard({ post }: { post: PostMeta }) {
 
           <h2
             className="mb-2 text-base font-bold leading-snug"
-            style={{ color: 'var(--blog-ink)' }}
+            style={{
+              color: 'var(--blog-ink)',
+              viewTransitionName: transitionNames.title,
+            }}
           >
             {post.title}
           </h2>

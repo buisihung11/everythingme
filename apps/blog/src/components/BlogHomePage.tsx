@@ -16,6 +16,7 @@ import {
   type BlogType,
 } from '#/lib/blog'
 import type { PostMeta } from '#/lib/blog-posts'
+import { BLOG_PAGE_TRANSITION } from '#/lib/view-transitions'
 
 interface BlogHomePageProps {
   type: BlogType
@@ -29,6 +30,7 @@ export default function BlogHomePage({ type, posts, category }: BlogHomePageProp
   const subCategories = SUB_CATEGORIES[type]
   const site = BLOG_SITES[type]
   const homePath = site.home as '/personal' | '/technical'
+  const pageTransitionName = BLOG_PAGE_TRANSITION
 
   function handleCategoryClick(slug: string) {
     navigate({
@@ -38,7 +40,10 @@ export default function BlogHomePage({ type, posts, category }: BlogHomePageProp
   }
 
   return (
-    <main className="page-wrap flex-1 px-4 pb-16 pt-10">
+    <main
+      className="page-wrap flex-1 px-4 pb-16 pt-10"
+      style={{ viewTransitionName: pageTransitionName }}
+    >
       <section className="rise-in mb-10">
         {type === 'personal' ? (
           <PersonalIntro />
