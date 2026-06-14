@@ -101,6 +101,9 @@ importers:
       react-dom:
         specifier: 'catalog:'
         version: 19.2.7(react@19.2.7)
+      react-unsplash:
+        specifier: ^1.0.2
+        version: 1.0.2(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       tailwindcss:
         specifier: ^4.1.18
         version: 4.3.1
@@ -184,6 +187,9 @@ importers:
         specifier: ^3.4.7
         version: 3.4.9
     devDependencies:
+      dotenv:
+        specifier: ^16.4.7
+        version: 16.4.7
       drizzle-kit:
         specifier: ^0.31.4
         version: 0.31.10
@@ -4001,6 +4007,9 @@ packages:
   bl@4.1.0:
     resolution: {integrity: sha512-1W07cM9gS6DcLperZfFSj+bWLtaPGSOHWhPiGzXmvVJbRLdG82sH/Kn8EtW1VqWVA54AKf2h5k5BbnIbwF3h6w==}
 
+  blurhash@2.0.5:
+    resolution: {integrity: sha512-cRygWd7kGBQO3VEhPiTgq4Wc43ctsM+o46urrmPOiuAe+07fzlSB9OJVdpgDL0jPqXUVQ9ht7aq7kxOeJHRK+w==}
+
   body-parser@1.20.5:
     resolution: {integrity: sha512-3grm+/2tUOvu2cjJkvsIxrv/wVpfXQW4PsQHYm7yk4vfpu7Ekl6nEsYBoJUL6qDwZUx8wUhQ8tR2qz+ad9c9OA==}
     engines: {node: '>= 0.8', npm: 1.2.8000 || >= 1.4.16}
@@ -6109,6 +6118,12 @@ packages:
     peerDependenciesMeta:
       '@types/react':
         optional: true
+
+  react-unsplash@1.0.2:
+    resolution: {integrity: sha512-x4rDBFb5IuGh6j2il889lwUH6VGXTy7MQrMoPbPcwv1Y1h7J+6FrcIBsbHzvrJOnNrXRyE7SYgChfKUjFYoE8A==}
+    peerDependencies:
+      react: '>=18'
+      react-dom: '>=18'
 
   react@19.2.7:
     resolution: {integrity: sha512-HNe9WslTbXmFK8o8cmwgAeJFSBvt1bPdHCVKtaaV+WlAN36mpT4hcRpwbf3fY56ar2oIXzsBpOAiIRHAdY0OlQ==}
@@ -11022,6 +11037,8 @@ snapshots:
       inherits: 2.0.4
       readable-stream: 3.6.2
 
+  blurhash@2.0.5: {}
+
   body-parser@1.20.5:
     dependencies:
       bytes: 3.1.2
@@ -13560,6 +13577,12 @@ snapshots:
       tslib: 2.8.1
     optionalDependencies:
       '@types/react': 19.2.17
+
+  react-unsplash@1.0.2(react-dom@19.2.7(react@19.2.7))(react@19.2.7):
+    dependencies:
+      blurhash: 2.0.5
+      react: 19.2.7
+      react-dom: 19.2.7(react@19.2.7)
 
   react@19.2.7: {}
 

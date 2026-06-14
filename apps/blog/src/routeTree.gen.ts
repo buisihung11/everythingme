@@ -15,6 +15,7 @@ import { Route as TechnicalIndexRouteImport } from './routes/technical/index'
 import { Route as PersonalIndexRouteImport } from './routes/personal/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as BlogSplatRouteImport } from './routes/blog/$'
+import { Route as ApiUnsplashRouteImport } from './routes/api/unsplash'
 import { Route as ApiSearchRouteImport } from './routes/api/search'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
@@ -48,6 +49,11 @@ const BlogSplatRoute = BlogSplatRouteImport.update({
   path: '/blog/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiUnsplashRoute = ApiUnsplashRouteImport.update({
+  id: '/api/unsplash',
+  path: '/api/unsplash',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiSearchRoute = ApiSearchRouteImport.update({
   id: '/api/search',
   path: '/api/search',
@@ -63,6 +69,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/api/search': typeof ApiSearchRoute
+  '/api/unsplash': typeof ApiUnsplashRoute
   '/blog/$': typeof BlogSplatRoute
   '/admin/': typeof AdminIndexRoute
   '/personal/': typeof PersonalIndexRoute
@@ -73,6 +80,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/api/search': typeof ApiSearchRoute
+  '/api/unsplash': typeof ApiUnsplashRoute
   '/blog/$': typeof BlogSplatRoute
   '/admin': typeof AdminIndexRoute
   '/personal': typeof PersonalIndexRoute
@@ -84,6 +92,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/api/search': typeof ApiSearchRoute
+  '/api/unsplash': typeof ApiUnsplashRoute
   '/blog/$': typeof BlogSplatRoute
   '/admin/': typeof AdminIndexRoute
   '/personal/': typeof PersonalIndexRoute
@@ -96,6 +105,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/api/search'
+    | '/api/unsplash'
     | '/blog/$'
     | '/admin/'
     | '/personal/'
@@ -106,6 +116,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/api/search'
+    | '/api/unsplash'
     | '/blog/$'
     | '/admin'
     | '/personal'
@@ -116,6 +127,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/api/search'
+    | '/api/unsplash'
     | '/blog/$'
     | '/admin/'
     | '/personal/'
@@ -127,6 +139,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
   ApiSearchRoute: typeof ApiSearchRoute
+  ApiUnsplashRoute: typeof ApiUnsplashRoute
   BlogSplatRoute: typeof BlogSplatRoute
   AdminIndexRoute: typeof AdminIndexRoute
   PersonalIndexRoute: typeof PersonalIndexRoute
@@ -178,6 +191,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BlogSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/unsplash': {
+      id: '/api/unsplash'
+      path: '/api/unsplash'
+      fullPath: '/api/unsplash'
+      preLoaderRoute: typeof ApiUnsplashRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/search': {
       id: '/api/search'
       path: '/api/search'
@@ -199,6 +219,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
   ApiSearchRoute: ApiSearchRoute,
+  ApiUnsplashRoute: ApiUnsplashRoute,
   BlogSplatRoute: BlogSplatRoute,
   AdminIndexRoute: AdminIndexRoute,
   PersonalIndexRoute: PersonalIndexRoute,
