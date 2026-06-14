@@ -26,5 +26,16 @@ export default defineConfig({
     environment: 'jsdom',
     passWithNoTests: true,
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json-summary', 'lcov'],
+      reportsDirectory: './coverage',
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: [
+        'src/**/*.{test,spec}.{ts,tsx}',
+        'src/test/**',
+        'src/routeTree.gen.ts',
+      ],
+    },
   },
 })
