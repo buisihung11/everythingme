@@ -1,4 +1,8 @@
 {
   "title": "Web Development",
-  "pages": ["why-i-love-typescript", "building-with-tanstack"]
+  "pages": [
+    "why-i-love-typescript",
+    "building-with-tanstack",
+    "react-design-patterns-that-scale"
+  ]
 }
