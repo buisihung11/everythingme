@@ -1,0 +1,217 @@
+---
+title: React Design Patterns That Actually Scale
+description: Compound components, custom hooks, and composition over inheritance — the patterns I reach for when a React codebase starts to grow past a single screen.
+date: 2026-06-15
+type: technical
+category: web-development
+readTime: 9
+thumbnail: /thumbnails/react-design-patterns-that-scale.svg
+---
+
+The first time I refactored a 400-line React component, I thought the problem was the component itself. It wasn't. The problem was that I had mixed three different concerns — data fetching, layout, and interaction — into one file because React made it *easy* to do that.
+
+Design patterns in React are less about memorizing names from a textbook and more about recognizing when your UI is trying to tell you something. Here are the patterns I keep coming back to once a project grows past the prototype stage.
+
+## 1. Composition Over Inheritance
+
+React never really embraced class inheritance the way Angular or older OOP frameworks did. That's intentional. You don't extend a `BaseButton`; you compose behavior with props and children.
+
+```tsx
+function Card({ children }: { children: React.ReactNode }) {
+  return <article className="rounded-xl border p-4">{children}</article>
+}
+
+function CardHeader({ children }: { children: React.ReactNode }) {
+  return <header className="mb-3 font-semibold">{children}</header>
+}
+
+function CardBody({ children }: { children: React.ReactNode }) {
+  return <div className="text-sm text-muted-foreground">{children}</div>
+}
+```
+
+This leads naturally into compound components — a pattern where a parent exports subcomponents that share implicit state through context.
+
+## 2. Compound Components
+
+Radix, Headless UI, and most well-designed component libraries use this pattern. The API reads like HTML: `<Tabs><Tabs.List /><Tabs.Trigger /><Tabs.Content /></Tabs>`.
+
+The magic is a small context provider that coordinates siblings without prop drilling:
+
+```tsx
+const TabsContext = React.createContext<{
+  value: string
+  setValue: (value: string) => void
+} | null>(null)
+
+function Tabs({
+  defaultValue,
+  children,
+}: {
+  defaultValue: string
+  children: React.ReactNode
+}) {
+  const [value, setValue] = React.useState(defaultValue)
+
+  return (
+    <TabsContext.Provider value={{ value, setValue }}>
+      <div>{children}</div>
+    </TabsContext.Provider>
+  )
+}
+
+function TabsTrigger({ value, children }: { value: string; children: React.ReactNode }) {
+  const ctx = React.useContext(TabsContext)
+  if (!ctx) throw new Error('TabsTrigger must be used inside Tabs')
+
+  const isActive = ctx.value === value
+
+  return (
+    <button
+      type="button"
+      aria-selected={isActive}
+      onClick={() => ctx.setValue(value)}
+    >
+      {children}
+    </button>
+  )
+}
+```
+
+**When to reach for it:** flexible UI primitives where consumers need control over structure and styling, but still want coordinated behavior.
+
+## 3. Custom Hooks for Logic Extraction
+
+Before hooks, we split "smart" container components from "dumb" presentational ones. Custom hooks are the modern version — same separation, less ceremony.
+
+```tsx
+function useDebouncedValue<T>(value: T, delayMs = 300) {
+  const [debounced, setDebounced] = React.useState(value)
+
+  React.useEffect(() => {
+    const id = window.setTimeout(() => setDebounced(value), delayMs)
+    return () => window.clearTimeout(id)
+  }, [value, delayMs])
+
+  return debounced
+}
+
+function SearchField() {
+  const [query, setQuery] = React.useState('')
+  const debouncedQuery = useDebouncedValue(query)
+
+  // fetch or filter using debouncedQuery
+  return <input value={query} onChange={(e) => setQuery(e.target.value)} />
+}
+```
+
+The component stays focused on rendering. The hook owns the timing logic. You can test the hook in isolation, reuse it across screens, and name the behavior in one place.
+
+**Rule of thumb:** if you're copying the same `useEffect` + `useState` block into a second component, extract a hook.
+
+## 4. Controlled vs. Uncontrolled Components
+
+This is a design decision, not just an implementation detail.
+
+- **Controlled:** React state is the source of truth (`value` + `onChange`).
+- **Uncontrolled:** the DOM (or a ref) holds state; you read it when needed.
+
+Controlled components are easier to validate, reset, and sync with URL or server state. Uncontrolled components are simpler for one-off forms and file inputs.
+
+```tsx
+// Controlled — parent owns the value
+<input value={email} onChange={(e) => setEmail(e.target.value)} />
+
+// Uncontrolled — DOM owns the value until submit
+<input ref={emailRef} defaultValue="" />
+```
+
+Mixing both in the same field is a common source of bugs. Pick one model per input and stick with it.
+
+## 5. State Reducer for Complex Transitions
+
+When `useState` turns into a chain of interdependent updates — open modal, set step, clear errors, disable submit — `useReducer` gives you a single place to describe transitions.
+
+```tsx
+type FormState = {
+  step: 'details' | 'review' | 'done'
+  error: string | null
+}
+
+type FormAction =
+  | { type: 'next' }
+  | { type: 'back' }
+  | { type: 'fail'; error: string }
+  | { type: 'reset' }
+
+function formReducer(state: FormState, action: FormAction): FormState {
+  switch (action.type) {
+    case 'next':
+      if (state.step === 'details') return { step: 'review', error: null }
+      if (state.step === 'review') return { step: 'done', error: null }
+      return state
+    case 'back':
+      if (state.step === 'review') return { step: 'details', error: null }
+      return state
+    case 'fail':
+      return { ...state, error: action.error }
+    case 'reset':
+      return { step: 'details', error: null }
+  }
+}
+```
+
+This is the **State Reducer** pattern from the hooks era: explicit events, predictable next states, easier debugging than five separate `setState` calls in one handler.
+
+## 6. Provider Pattern for Cross-Cutting Concerns
+
+Authentication, theming, feature flags, and i18n rarely belong inside leaf components. A context provider lifts shared state to a boundary and exposes a focused hook:
+
+```tsx
+const AuthContext = React.createContext<AuthValue | null>(null)
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const value = useAuthState() // session fetch, refresh, sign-out
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+}
+
+export function useAuth() {
+  const ctx = React.useContext(AuthContext)
+  if (!ctx) throw new Error('useAuth must be used within AuthProvider')
+  return ctx
+}
+```
+
+**Caution:** context is not a global store. Split providers by domain (theme vs. auth vs. cart) so unrelated updates don't re-render the entire tree.
+
+## 7. Render Props and Slot Props (When Composition Needs a Bridge)
+
+Render props (`children` as a function) are less common now that hooks exist, but they still shine when a parent needs to hand *derived data* to children without owning the markup:
+
+```tsx
+function DataLoader<T>({
+  query,
+  children,
+}: {
+  query: () => Promise<T>
+  children: (result: { data: T | null; loading: boolean }) => React.ReactNode
+}) {
+  const { data, loading } = useQuery(query)
+  return <>{children({ data, loading })}</>
+}
+```
+
+In modern codebases I more often see **slot props** — named render functions like `renderItem` or `header` — which read cleaner in TypeScript and JSX.
+
+## Putting It Together
+
+None of these patterns are mutually exclusive. A real feature might use:
+
+1. A **provider** for auth
+2. A **custom hook** for fetching and caching
+3. A **compound component** for the interactive UI shell
+4. A **reducer** for multi-step wizard state
+
+The goal isn't to use every pattern in every file. It's to notice when a component is doing too many jobs — and to reach for the smallest pattern that restores clarity.
+
+React's component model rewards small, composable pieces with explicit data flow. When your codebase scales, that discipline matters more than any single abstraction.
