@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createUnsplashPhoto } from '#/test/fixtures/unsplash-photo'
 import {
   buildMdxImageSnippet,
+  buildMdxSnippet,
   buildPostSnippets,
   buildThumbnailFrontmatter,
   copyText,
@@ -55,6 +56,14 @@ describe('buildMdxImageSnippet', () => {
     expect(buildMdxImageSnippet(photo)).toBe(
       `<Image\n  src="https://images.unsplash.com/photo-1?w=1080"\n  alt="Mountain sunrise"\n/>`,
     )
+  })
+})
+
+describe('buildMdxSnippet', () => {
+  it('delegates to buildMdxImageSnippet for backward compatibility', () => {
+    const photo = createUnsplashPhoto()
+
+    expect(buildMdxSnippet(photo)).toBe(buildMdxImageSnippet(photo))
   })
 })
 

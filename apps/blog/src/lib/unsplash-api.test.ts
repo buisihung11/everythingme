@@ -30,6 +30,22 @@ describe('handleUnsplashSearch', () => {
     })
   })
 
+  it('uses default pagination when page and per_page are omitted', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ results: [], total_pages: 0 }), {
+        status: 200,
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const request = new Request('http://localhost/api/unsplash?query=forest')
+    await handleUnsplashSearch(request, 'test-key')
+
+    const [url] = fetchMock.mock.calls[0] as [URL]
+    expect(url.searchParams.get('page')).toBe('1')
+    expect(url.searchParams.get('per_page')).toBe('20')
+  })
+
   it('proxies search requests to Unsplash with auth and pagination params', async () => {
     const photo = createUnsplashPhoto()
     const fetchMock = vi.fn().mockResolvedValue(
