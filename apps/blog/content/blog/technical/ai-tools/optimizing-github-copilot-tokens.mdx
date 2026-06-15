@@ -1,0 +1,131 @@
+---
+title: Optimizing Token Usage in GitHub Copilot
+description: "GitHub Copilot's token-based pricing means every chat has a cost. Here's how to understand the context window and spend your tokens wisely."
+date: 2026-06-14
+type: technical
+category: ai-tools
+readTime: 10
+thumbnail: /thumbnails/technical-web.svg
+---
+
+For a while, GitHub Copilot felt free. You paid a flat monthly subscription and the AI just... did things. You didn't think about what you were sending it or how much it cost to respond. The mental model was a gym membership, not a taxi ride.
+
+That mental model is now wrong.
+
+GitHub Copilot has shifted to a usage-based system where more capable models draw from a pool of "premium requests." Run through that pool and you're either rate-limited or paying more. If you use Copilot heavily — and if you work the way most AI-assisted developers do, with long chat threads, multiple referenced files, and complex agent tasks — you will feel this.
+
+Understanding where tokens actually go is the first step toward spending them well.
+
+## How Copilot Charges You
+
+Every interaction with Copilot ultimately becomes a call to a language model. That call has two sides:
+
+- **Input tokens**: everything sent *to* the model — your message, the context Copilot assembles around it, chat history, open files, instructions.
+- **Output tokens**: everything the model sends *back* — the generated code, explanation, or plan.
+
+Output tokens are meaningfully more expensive than input tokens (typically 3–5× per token depending on the provider). A response that writes 200 lines of code costs more than a response that writes 10, regardless of how much context you sent.
+
+GitHub Copilot maps this onto a **premium request** system. Not all models cost the same:
+
+| Model tier | Examples | Relative cost |
+|---|---|---|
+| Base (included) | GPT-4o mini, Claude Haiku | 0× premium requests |
+| Mid | GPT-4o | 1× premium request |
+| Premium | Claude Sonnet 3.7, o3 | 1× with potential multipliers |
+| Extended thinking | o3, Claude Sonnet 3.7 thinking mode | higher multiplier |
+
+The exact multipliers change as GitHub adjusts pricing, but the principle holds: the model you choose has a larger effect on cost than almost anything else you do.
+
+## What's Actually Inside the Context Window
+
+When you type a message in Copilot Chat and press Enter, Copilot doesn't just send your words. It assembles a context package that goes to the model. Understanding what's in that package explains why some interactions are expensive and others aren't.
+
+A typical context window contains roughly these layers, from largest to smallest:
+
+```
+┌─────────────────────────────────────────────┐
+│  System instructions                         │  ~500–2,000 tokens
+│  (.github/copilot-instructions.md)           │
+├─────────────────────────────────────────────┤
+│  Custom agent skills / extensions            │  ~0–3,000 tokens
+├─────────────────────────────────────────────┤
+│  Attached files (@file references)           │  ~0–10,000+ tokens
+├─────────────────────────────────────────────┤
+│  Active editor context (current file)        │  ~500–5,000 tokens
+├─────────────────────────────────────────────┤
+│  Chat history (prior turns)                  │  ~0–8,000+ tokens
+├─────────────────────────────────────────────┤
+│  Selected code / diagnostics                 │  ~0–1,000 tokens
+├─────────────────────────────────────────────┤
+│  Your message                                │  ~20–500 tokens
+└─────────────────────────────────────────────┘
+```
+
+Two things stand out here. First, your actual message is almost always the *smallest* part of what gets sent. Second, a long-running chat thread with several referenced files can easily push 15,000–25,000 tokens *before* you've typed a single word — and that's charged every turn.
+
+Everything in the context window is re-sent on every message. Chat history doesn't accumulate on the server and get referenced cheaply; it gets serialized and transmitted with each new turn. A ten-message thread is sending roughly ten times the tokens of a one-message thread, assuming constant context.
+
+## Optimizing the Context Window
+
+### Reduce Prompt Size
+
+The most direct lever. Copilot already has your file open — you don't need to paste it into your message. Ask specific questions rather than restating background. "Why is this function O(n²)?" costs a fraction of "Here is my function [paste 80 lines]. Can you tell me why it might be slow?"
+
+Clear your chat thread when you switch tasks. There's no cost to starting a new conversation, and carrying 20 turns of unrelated history into a new question taxes every subsequent response.
+
+### Load Instructions and Skills Correctly
+
+`.github/copilot-instructions.md` is included in *every* context window for your repository. Treat it like a system prompt you're paying for per-request, because that's what it is.
+
+Keep it short and high-signal. A useful instruction file is 10–20 lines covering your stack, conventions, and any constraints the model needs to know. A bad one is a 200-line README paste that the model scans and ignores anyway.
+
+Similarly, custom agent skills (extensions, plugins) add tokens to every invocation. Load only the skills that are relevant to your current task. Enabling everything by default is the equivalent of including your entire codebase as context on every message.
+
+Use `@file` deliberately. When you reference a file, its contents enter the context window. Referencing five large files for a question that only concerns one of them multiplies your cost without improving the answer.
+
+### Choose the Right Model for the Task
+
+This is the highest-leverage decision and the one developers most consistently get wrong.
+
+A base model is appropriate for:
+- Autocomplete and inline suggestions
+- Renaming variables or functions
+- Writing docstrings for straightforward functions
+- Quick syntax questions
+- Reformatting code
+
+A premium model earns its cost for:
+- Debugging a multi-system interaction
+- Designing an API or database schema
+- Understanding a large unfamiliar codebase
+- Generating complex business logic with non-obvious edge cases
+
+Using Claude Sonnet to rename a variable is like hiring a senior engineer to book a meeting room. The output quality difference is negligible and the cost difference is not.
+
+## Improving Output Quality (Which Also Saves Tokens)
+
+There's a second-order effect that's easy to miss: *poor output quality causes more token spending*, not less. When a response is vague or incorrect, you spend tokens asking follow-up questions, providing more context, and generating corrected versions. The cheapest interaction is one that gets it right the first time.
+
+### Use Plan Mode Before Implementing Complex Features
+
+This is the highest-impact practice for complex tasks.
+
+The pattern most developers fall into looks like this:
+
+> "Implement a user notification system with email and in-app delivery, retry logic, and unread counts."
+
+The model starts generating. It makes assumptions. It builds something. You look at it, realize it made the wrong assumptions about your data model, and ask it to redo parts. That cycle repeats two or three times. Each iteration regenerates thousands of tokens of code.
+
+The better approach:
+
+> [Plan mode] "I want to add a notification system. What are the key design decisions? What should the data model look like? What are the integration points?"
+
+You get a focused plan in a few hundred tokens. You review it, correct the assumptions, and confirm the approach. *Then* you switch to implementation. The implementation pass generates code once, correctly, because the model already has a resolved mental model of the task.
+
+One planning session typically costs less than a single failed implementation attempt. For anything longer than a self-contained function, plan first.
+
+---
+
+Token economics don't change what Copilot can do — they change how you think about using it. A few deliberate habits (focused prompts, clean context, model-appropriate tasks, planning before coding) turn an expensive habit into an efficient one.
+
+The developers who get the most out of AI tools aren't the ones who throw the most at them. They're the ones who've learned to ask well.

@@ -9,6 +9,7 @@ export const SUB_CATEGORIES = {
   technical: [
     { slug: 'all', label: 'All' },
     { slug: 'web-development', label: 'Web Dev' },
+    { slug: 'ai-tools', label: 'AI Tools' },
     { slug: 'system-design', label: 'System Design' },
     { slug: 'devops', label: 'DevOps' },
   ],
@@ -77,6 +78,7 @@ export function getDefaultThumbnail(type: BlogType, category: string): string {
     return '/thumbnails/personal-thoughts.svg'
   }
 
+  if (category === 'ai-tools') return '/thumbnails/technical-web.svg'
   if (category === 'system-design') return '/thumbnails/technical-system.svg'
   if (category === 'devops') return '/thumbnails/technical-devops.svg'
   return '/thumbnails/technical-web.svg'
