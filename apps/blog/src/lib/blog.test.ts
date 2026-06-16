@@ -105,6 +105,7 @@ describe('getDefaultThumbnail', () => {
     ['personal', 'travel', '/thumbnails/personal-travel.svg'],
     ['personal', 'thoughts', '/thumbnails/personal-thoughts.svg'],
     ['personal', 'other', '/thumbnails/personal-thoughts.svg'],
+    ['technical', 'ai-tools', '/thumbnails/technical-web.svg'],
     ['technical', 'system-design', '/thumbnails/technical-system.svg'],
     ['technical', 'devops', '/thumbnails/technical-devops.svg'],
     ['technical', 'web-development', '/thumbnails/technical-web.svg'],
