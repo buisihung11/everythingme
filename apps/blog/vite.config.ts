@@ -7,6 +7,7 @@ import tailwindcss from '@tailwindcss/vite'
 import { nitro } from 'nitro/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import path from 'node:path'
+import { createVitePwaPluginOptions } from './src/lib/pwa-config.ts'
 import { docs } from './source.config.ts'
 
 const isVercelBuild = Boolean(process.env.VERCEL || process.env.CI)
@@ -47,29 +48,7 @@ const config = defineConfig({
       { index: false },
     ),
     tanstackStart(),
-    VitePWA({
-      registerType: 'autoUpdate',
-      injectRegister: 'auto',
-      manifest: false, // use public/manifest.json as-is
-      workbox: {
-        globPatterns: ['**/*.{js,css,ico,png,svg,woff,woff2}'],
-        runtimeCaching: [
-          {
-            urlPattern: ({ request }) => request.mode === 'navigate',
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'pages-cache',
-              networkTimeoutSeconds: 3,
-              cacheableResponse: { statuses: [0, 200] },
-            },
-          },
-        ],
-      },
-      devOptions: {
-        enabled: true,
-        type: 'module',
-      },
-    }),
+    VitePWA(createVitePwaPluginOptions()),
     nitro(
       isVercelBuild
         ? {
