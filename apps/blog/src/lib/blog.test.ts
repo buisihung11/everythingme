@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   filterPageTreeForType,
+  getActivePersonalCategory,
   getBlogTypeFromPathname,
   getBlogTypeFromSlugs,
   getDefaultThumbnail,
@@ -30,6 +31,31 @@ describe('getBlogTypeFromSlugs', () => {
   it('returns null when the first slug is not a blog type', () => {
     expect(getBlogTypeFromSlugs(['travel', 'a-week-in-hoi-an'])).toBeNull()
     expect(getBlogTypeFromSlugs([])).toBeNull()
+  })
+})
+
+describe('getActivePersonalCategory', () => {
+  it('uses search category on personal list pages', () => {
+    expect(getActivePersonalCategory('/personal')).toBe('all')
+    expect(getActivePersonalCategory('/personal', 'travel')).toBe('travel')
+    expect(getActivePersonalCategory('/personal/travel')).toBe('all')
+  })
+
+  it('derives category from blog detail paths', () => {
+    expect(
+      getActivePersonalCategory('/blog/personal/travel/a-week-in-hoi-an'),
+    ).toBe('travel')
+    expect(
+      getActivePersonalCategory('/blog/personal/thoughts/reflection'),
+    ).toBe('thoughts')
+  })
+
+  it('falls back to all for unrelated paths or unknown categories', () => {
+    expect(getActivePersonalCategory('/technical')).toBe('all')
+    expect(getActivePersonalCategory('/blog/personal/unknown/post')).toBe('all')
+    expect(getActivePersonalCategory('/blog/technical/web-development/post')).toBe(
+      'all',
+    )
   })
 })
 
