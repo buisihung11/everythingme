@@ -72,6 +72,16 @@ describe('validateWebManifest', () => {
       '512x512 icon is required',
     ])
   })
+
+  it('rejects manifests missing name or short_name', () => {
+    expect(
+      validateWebManifest({
+        ...validManifest,
+        name: '',
+        short_name: '',
+      }),
+    ).toEqual(['name is required', 'short_name is required'])
+  })
 })
 
 describe('public/manifest.json', () => {

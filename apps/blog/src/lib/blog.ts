@@ -54,6 +54,32 @@ export function getBlogTypeFromSlugs(slugs: string[]): BlogType | null {
   return null
 }
 
+export function getActivePersonalCategory(
+  pathname: string,
+  searchCategory?: string,
+): string {
+  if (pathname.startsWith('/personal')) {
+    return searchCategory ?? 'all'
+  }
+
+  if (pathname.startsWith('/blog/personal/')) {
+    const segment = pathname.split('/')[3]
+    if (segment === 'travel' || segment === 'thoughts') return segment
+  }
+
+  return 'all'
+}
+
+export function validateBlogPageAccess(
+  slugs: string[],
+  page: { data: { type: BlogType } } | undefined,
+): BlogType | null {
+  const blogType = getBlogTypeFromSlugs(slugs)
+  if (!blogType || !page) return null
+  if (page.data.type !== blogType) return null
+  return blogType
+}
+
 export function filterPageTreeForType(tree: unknown, type: BlogType): unknown {
   const root = tree as { name?: unknown; children?: TreeNode[] }
   const folder = root.children?.find(
