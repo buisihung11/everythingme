@@ -1,0 +1,385 @@
+---
+title: Learning Micro Frontends the Hard Way
+description: I built a five-app Module Federation demo in an NX monorepo — React, Angular, and Vue running side by side. Architecture, hands-on lessons, and every issue that tried to stop me.
+date: 2026-06-21
+type: technical
+category: system-design
+readTime: 20
+thumbnail: /thumbnails/learning-micro-frontends.svg
+---
+
+Micro frontends sound elegant in a conference talk: independent teams, independent deploys, pick the best framework for each feature. In practice, the first time you try to load an Angular app inside a React shell at runtime, the browser has opinions.
+
+I wanted to understand this properly — not from slides, but by building something real. So I put together a study app under `apps/studying/` in my monorepo: one React **shell** host and four **remotes** (Dashboard, Users, Products, Analytics), each on its own port, wired together with Module Federation.
+
+This is what I learned, every wall I hit along the way, and the hands-on notes I'd normally keep in a `lessons/` folder.
+
+## Study App Overview
+
+The MFE Admin Study App demonstrates **micro frontend architecture** using NX and Module Federation.
+
+### Architecture
+
+| App | Framework | Port | Role |
+|-----|-----------|------|------|
+| `mfe_shell` | React | 4200 | Host — sidebar, routing, shared layout |
+| `mfe_dashboard` | React | 4201 | Stats cards, activity feed |
+| `mfe_users` | Angular | 4202 | User table with detail panel |
+| `mfe_products_vue` | Vue | 4203 | Product catalog |
+| `mfe_analytics` | React | 4204 | Live event feed + charts |
+
+### Project structure
+
+```
+apps/studying/
+├── mfe-shell/           # React host (port 4200)
+├── mfe_dashboard/       # React remote — Dashboard (4201)
+├── mfe_users/           # Angular remote — Users (4202)
+├── mfe-products-vue/    # Vue remote — Products (4203)
+├── mfe_analytics/       # React remote — Analytics (4204)
+├── mfe-shared/          # Shared event bus, auth store, types
+└── mfe-admin/           # Study app README
+```
+
+### How it works
+
+1. The **shell** (`mfe_shell`) is the single entry point users visit.
+2. Each sidebar route lazy-loads a **remote** at runtime.
+3. Remotes are built and served independently — they can be deployed to different servers.
+4. A shared **event bus** and **auth store** on `window` enable communication across framework boundaries.
+
+### Running the demo
+
+```bash
+pnpm mfe:all
+```
+
+Then open http://localhost:4200.
+
+### Key files
+
+| File | Purpose |
+|------|---------|
+| `mfe-shell/module-federation.config.ts` | Host federation config |
+| `mfe-shared/event-bus.ts` | Cross-remote pub/sub |
+| `mfe-shared/auth-store.ts` | Shared auth singleton |
+| `mfe-shell/src/app/app.tsx` | Shell routing & remote loading |
+
+## Module Federation
+
+Module Federation (Webpack 5 / Vite plugin) allows JavaScript applications to dynamically load code from other applications at **runtime**, not build time. Each app exposes modules and declares remotes it can consume.
+
+### Host (shell)
+
+Webpack remotes cover the React and Angular apps. Vue is loaded separately because it uses Vite federation with a different dev-server workflow.
+
+```ts
+// apps/studying/mfe-shell/module-federation.config.ts
+const config = {
+  name: 'mfe_shell',
+  remotes: ['mfe_dashboard', 'mfe_users', 'mfe_analytics'],
+};
+```
+
+Products (`mfe_products_vue`) is mounted in `VueProductsHost.tsx` via a dynamic import of `http://localhost:4203/assets/remoteEntry.js`.
+
+### Remote (dashboard)
+
+```ts
+// apps/studying/mfe_dashboard/module-federation.config.ts
+const config = {
+  name: 'mfe_dashboard',
+  exposes: {
+    './Module': './src/remote-entry.ts',
+  },
+};
+```
+
+### Remote (Angular users)
+
+Angular emits a classic `remoteEntry.js` (not ESM) so the webpack host can load it without CORS or `import.meta` issues:
+
+```ts
+// apps/studying/mfe_users/module-federation.config.ts
+const config = {
+  name: 'mfe_users',
+  library: { type: 'var', name: 'mfe_users' },
+  exposes: {
+    './Mount': 'apps/studying/mfe_users/src/app/remote-entry/mount.ts',
+  },
+};
+```
+
+### Key concepts
+
+- **Host** — The app that consumes remotes (our React shell).
+- **Remote** — An independently built app that exposes modules.
+- **Exposes** — What a remote makes available (e.g. `./Module`, `./Mount`).
+- **Remotes** — What a host can load at runtime.
+- **Shared dependencies** — Libraries like `react` marked as `singleton` to avoid duplicate instances.
+
+React-to-React remotes are the easy case: `React.lazy(() => import('mfe-dashboard/Module'))` and you're done.
+
+### Try it
+
+1. Start only the shell: `pnpm mfe:shell`
+2. Navigate to Dashboard — you'll see the error boundary because the remote isn't running.
+3. Start the dashboard: `pnpm mfe:dashboard`
+4. Refresh — the remote loads dynamically.
+
+Further reading: [Nx Module Federation](https://nx.dev/recipes/module-federation) · [Module Federation docs](https://module-federation.io/)
+
+## Cross-Framework Integration
+
+Micro frontends often use different frameworks. Our shell is React, but we also have Angular (Users) and Vue (Products) remotes.
+
+### Angular → React (Web Components)
+
+Angular's dependency injection doesn't play nicely inside a React component tree. The pattern that worked: expose a `mountUsers` function that registers a custom element with `@angular/elements`:
+
+```ts
+// mfe_users/src/app/remote-entry/mount.ts
+const usersElement = createCustomElement(UsersComponent, { injector: app.injector });
+customElements.define('mfe-users-widget', usersElement);
+```
+
+The React shell calls this via Module Federation:
+
+```tsx
+// mfe-shell/src/app/remotes/AngularUsersHost.tsx
+const remote = await import('mfe_users/Mount');
+await remote.mountUsers(hostRef.current);
+```
+
+Web Components become the neutral ground between frameworks.
+
+### Vue → React (Vite federation container)
+
+The Vue remote exposes a `mount` function via `@originjs/vite-plugin-federation`. Because Vite's dev server does not serve federation artifacts, we load the built `remoteEntry.js` from preview on port 4203:
+
+```tsx
+// mfe-shell/src/app/remotes/VueProductsHost.tsx
+const remote = await import(/* webpackIgnore: true */ 'http://localhost:4203/assets/remoteEntry.js');
+await remote.init({});
+const factory = await remote.get('./Products');
+const module = factory();
+cleanup = module.mount(hostRef.current);
+```
+
+The Vue remote itself exports the mount API:
+
+```ts
+// mfe-products-vue/src/remote-entry.ts
+export function mount(element: HTMLElement): () => void {
+  const app = createApp(ProductsApp);
+  app.mount(element);
+  return () => app.unmount();
+}
+```
+
+### React → React (standard)
+
+React remotes use the standard `React.lazy` + `import('mfe-dashboard/Module')` pattern.
+
+### Why different approaches?
+
+| Framework | Integration | Reason |
+|-----------|-------------|--------|
+| React | `React.lazy` | Native, simplest |
+| Angular | Web Components | Angular's DI works inside custom elements |
+| Vue | Mount function + Vite MF | Clean lifecycle control; separate build/preview workflow |
+
+## Event Bus
+
+When micro frontends are independent, they need a way to communicate without tight coupling.
+
+### Our solution
+
+A lightweight pub/sub event bus attached to `window`:
+
+```ts
+// mfe-shared/event-bus.ts
+window.__MFE_EVENT_BUS__ = createEventBus();
+```
+
+### API
+
+```ts
+const bus = getEventBus();
+
+// Publish
+bus.publish('user:selected', { id: '1', name: 'Alice' }, 'mfe_users');
+
+// Subscribe
+const unsubscribe = bus.subscribe('user:selected', (event) => {
+  console.log(event.payload, event.source);
+});
+```
+
+### Event types
+
+| Event | Publisher | Subscriber |
+|-------|-----------|------------|
+| `dashboard:refresh` | Shell (home) | Dashboard |
+| `analytics:track` | Dashboard | Analytics |
+| `user:selected` | Users (Angular) | Analytics |
+| `product:viewed` | Products (Vue) | Analytics |
+| `auth:changed` | Shell | All (future) |
+
+### Try it
+
+1. Open Analytics page
+2. Go to Users, click "View" on a user
+3. Switch back to Analytics — the live event feed shows the `user:selected` event
+4. Go to Products, click "View Details"
+5. Analytics feed updates with `product:viewed`
+
+Events include `source` (which remote published) and `timestamp`. History is kept in memory for debugging. No framework dependency — works from Angular, Vue, and React.
+
+## Shared State
+
+Multiple micro frontends may need access to the same user session, permissions, or global config.
+
+### Auth store
+
+A Zustand vanilla store attached to `window` as a singleton:
+
+```ts
+// mfe-shared/auth-store.ts
+window.__MFE_AUTH_STORE__ = createAuthStore();
+```
+
+Usage from any remote:
+
+```ts
+import { getAuthStore } from '../../mfe-shared/auth-store';
+
+const { user, token, isAuthenticated } = getAuthStore().getState();
+```
+
+### What's shared
+
+| Singleton | Location | Purpose |
+|-----------|----------|---------|
+| `__MFE_AUTH_STORE__` | `window` | User session & token |
+| `__MFE_EVENT_BUS__` | `window` | Cross-remote events |
+| `react` / `react-dom` | Module Federation | Prevent duplicate React |
+
+React remotes share React as a singleton via webpack federation config (auto-configured by NX). This prevents "two Reacts" bugs where hooks break.
+
+### Try it
+
+1. Open the shell — topbar shows the logged-in user from the shared store
+2. Open Dashboard — it reads the same user name
+3. Click "Logout" in the topbar — auth state resets and page reloads
+
+### Production considerations
+
+In production you'd typically use a proper auth provider (OAuth, JWT refresh), publish shared types via an npm package, use Module Federation `shared` config for state libraries, or push real-time sync through WebSockets or SSE.
+
+## The Issues (aka What Actually Taught Me)
+
+Theory is clean. Dev servers are not.
+
+### 1. NX's Module Federation Dev Server Was Broken
+
+The generated `@nx/react:module-federation-dev-server` executor failed immediately:
+
+```
+Cannot find project "undefined"
+```
+
+I switched all React apps to the standard `@nx/webpack:dev-server` executor. Same webpack config, fewer surprises. Lesson: generated tooling in fast-moving ecosystems (NX + Module Federation) sometimes lags behind the generators.
+
+### 2. Port Conflicts After Restarts
+
+Stopping servers with Ctrl+C doesn't always release ports. The next `pnpm mfe:all` hit `EADDRINUSE` on 4200–4204. I ended up killing processes manually before restarting.
+
+Lesson: when running five dev servers in parallel, have a cleanup script or know your `lsof -ti :4200 | xargs kill` incantation.
+
+### 3. Tailwind Styles Missing in the Shell
+
+The shell rendered unstyled HTML. Two separate problems:
+
+- Tailwind `content` paths didn't reach into shared packages
+- A shared CSS file duplicated `@tailwind` directives, confusing the build
+
+Fix: move design tokens into a Tailwind **preset** plugin (`mfe-shared/tailwind.preset.js`) and use absolute content paths. Import styles once from `bootstrap.tsx`.
+
+Lesson: in a monorepo MFE setup, styling is a shared concern whether you want it to be or not.
+
+### 4. Vue Dev Server Doesn't Serve `remoteEntry.js`
+
+Vite's dev server serves the SPA shell for unknown paths. Requesting `remoteEntry.js` returned HTML, not federation metadata.
+
+Fix: run `vite build --watch` alongside `vite preview --port 4203` so the built federation artifacts are actually served. Also enable `cors: true` on the preview server.
+
+Lesson: Webpack Module Federation and Vite Module Federation have different dev-server semantics. Don't assume they behave the same.
+
+### 5. Wrong Remote Entry Filename (`.js` vs `.mjs`)
+
+The shell manifest looked for `remoteEntry.js`. Angular's webpack build emitted `remoteEntry.mjs`. Result: 404, then a confusing error boundary.
+
+Lesson: check the actual network tab response, not what you think the filename should be.
+
+### 6. `import.meta` Outside a Module
+
+Trying to load Angular's `remoteEntry.mjs` with a manual dynamic import caused:
+
+```
+Cannot use 'import.meta' outside a module
+```
+
+Webpack's Module Federation loader injects remotes as classic scripts. ESM remotes with `import.meta` don't work that way.
+
+### 7. CORS on Cross-Origin Dynamic Imports
+
+The next attempt — `import(/* webpackIgnore: true */ 'http://localhost:4202/remoteEntry.mjs')` from the shell on port 4200 — hit:
+
+```
+Access to script at 'http://localhost:4202/remoteEntry.mjs' from origin 'http://localhost:4200'
+has been blocked by CORS policy
+```
+
+The file returned 200, but without `Access-Control-Allow-Origin`, the browser refused to execute it as a module.
+
+**The fix that worked:** configure the Angular remote to emit a classic `remoteEntry.js` via `library: { type: 'var', name: 'mfe_users' }`, re-add `mfe_users` to the shell's webpack remotes, and use the standard `import('mfe_users/Mount')`. Webpack handles script injection — no cross-origin ESM fetch, no CORS fight.
+
+I also added `Access-Control-Allow-Origin: *` headers on the Angular dev server as a safety net.
+
+Lesson: **how** you load a remote matters as much as **where** it lives. ESM across origins is a different problem than webpack Module Federation.
+
+### 8. Vue Federation API Mismatch
+
+Early code expected `window.mfe_products_vue`. The `@originjs/vite-plugin-federation` package exports ES module `{ get, init }` instead. Fixed by dynamic-importing `http://localhost:4203/assets/remoteEntry.js` and calling the federation container API directly.
+
+## What I'd Do Differently
+
+**Start with same-framework remotes.** Get React host + React remote working end-to-end before adding Angular and Vue. Cross-framework integration multiplies failure modes.
+
+**Pick one federation runtime per ecosystem.** Webpack MF for webpack apps, Vite plugin for Vite apps — but don't assume dev-server parity.
+
+**Invest in shared design tokens early.** Five apps with inconsistent styling makes it hard to tell if federation is broken or CSS is.
+
+**Document ports and startup order.** A single `pnpm mfe:all` script helps, but understanding which remote must be running for which route saves debugging time.
+
+## Was It Worth It?
+
+Yes — but not because I now think every app should be micro frontends.
+
+What I gained:
+
+- A concrete mental model for **host vs remote**, **exposes vs remotes**, and **shared dependencies**
+- Respect for the **integration layer** problem when frameworks differ
+- Appreciation for why teams use **module federation** vs **iframes** vs **single-SPA** vs **build-time packages**
+- A list of failure modes I can spot in code review
+
+Micro frontends trade build-time simplicity for runtime flexibility. That trade only makes sense when organizational boundaries (team autonomy, independent deploys) justify the operational cost.
+
+For a solo study project, the cost was a week of confusing browser errors. For a company with five teams shipping daily, it might be the right architecture.
+
+## Try It Yourself
+
+The study app lives in the repo under `apps/studying/`. Run `pnpm mfe:all` and open http://localhost:4200.
+
+If you're learning micro frontends, my honest advice: build the smallest possible host + one remote first. Get that working in the network tab. Then add a second framework and watch the browser teach you things no tutorial mentions.

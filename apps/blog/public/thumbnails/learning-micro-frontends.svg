@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" role="img" aria-label="Micro Frontends">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#1e3a5f"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="500" fill="url(#bg)"/>
+  <rect x="300" y="60" width="200" height="80" rx="12" fill="#2563eb" opacity="0.95"/>
+  <text x="400" y="108" text-anchor="middle" fill="#eff6ff" font-family="system-ui,sans-serif" font-size="22" font-weight="600">Shell</text>
+  <line x1="350" y1="140" x2="160" y2="220" stroke="#60a5fa" stroke-width="3"/>
+  <line x1="400" y1="140" x2="400" y2="220" stroke="#60a5fa" stroke-width="3"/>
+  <line x1="450" y1="140" x2="640" y2="220" stroke="#60a5fa" stroke-width="3"/>
+  <rect x="80" y="220" width="160" height="70" rx="10" fill="#1e40af" stroke="#93c5fd" stroke-width="2"/>
+  <rect x="320" y="220" width="160" height="70" rx="10" fill="#7c3aed" stroke="#c4b5fd" stroke-width="2"/>
+  <rect x="560" y="220" width="160" height="70" rx="10" fill="#059669" stroke="#6ee7b7" stroke-width="2"/>
+  <text x="160" y="262" text-anchor="middle" fill="#dbeafe" font-family="system-ui,sans-serif" font-size="16">React</text>
+  <text x="400" y="262" text-anchor="middle" fill="#ede9fe" font-family="system-ui,sans-serif" font-size="16">Angular</text>
+  <text x="640" y="262" text-anchor="middle" fill="#d1fae5" font-family="system-ui,sans-serif" font-size="16">Vue</text>
+  <rect x="200" y="360" width="400" height="50" rx="8" fill="#334155" opacity="0.8"/>
+  <text x="400" y="392" text-anchor="middle" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="15">Module Federation</text>
+</svg>
