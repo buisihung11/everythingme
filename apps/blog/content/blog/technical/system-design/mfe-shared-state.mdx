@@ -1,0 +1,416 @@
+---
+title: Shared State and Event Bus in Micro Frontends
+description: How to communicate across independently deployed micro frontends — window singletons, pub/sub event buses validated with zod, Zustand stores, and the pitfalls that actually bite you in production.
+date: 2026-07-04
+type: technical
+category: system-design
+readTime: 18
+thumbnail: /thumbnails/learning-micro-frontends.svg
+---
+
+In a [previous post](/blog/technical/system-design/learning-micro-frontends) I walked through building a five-app Module Federation demo — React shell, React/Angular/Vue remotes, all running on separate ports. Getting them to *load* together was the hard part. Getting them to *talk* to each other is a different problem entirely.
+
+This post goes deep on **shared state** and **cross-remote events**: why your usual React patterns break, what actually works across framework boundaries, and how our study app implements it with a live monitor you can poke at.
+
+## The Isolation Problem
+
+Micro frontends are intentionally isolated. Each remote is built, deployed, and versioned independently. That isolation is the whole point — but it also means:
+
+- **React Context doesn't cross boundaries.** Context only works inside a single React tree. A Dashboard remote and an Analytics remote each have their own React root. Passing context from shell to remote requires prop drilling through federation boundaries, which defeats the purpose.
+- **Redux/Zustand React providers don't either.** A `<Provider>` in the shell doesn't reach into a lazily loaded remote that bootstrapped its own store instance.
+- **Angular services and Vue inject/provide are framework-local.** Angular's `inject()` and Vue's `provide()` only work within their own application instances.
+
+So when Users (Angular) selects a user and Analytics (React) needs to know about it, you can't just "lift state up" to a parent component. There is no shared parent in the traditional sense — only a shell that orchestrates mounting.
+
+## Three Patterns for Cross-MFE Communication
+
+| Pattern | Best for | Trade-offs |
+|---------|----------|------------|
+| **URL / browser state** | Navigation, filters, shareable links | Limited payload size; polling or re-read on route change |
+| **Native `postMessage`** | iframe-based MFEs, strict sandboxing | Verbose; origin checks required; not needed for same-origin MF |
+| **Window singletons** | Same-origin Module Federation | Simple; works across frameworks; requires discipline |
+
+Our study app uses **window singletons** because all remotes load on the same origin (`localhost:4200` in dev). We attach two globals:
+
+| Singleton | Purpose |
+|-----------|---------|
+| `window.__MFE_EVENT_BUS__` | Pub/sub for fire-and-forget events |
+| `window.__MFE_AUTH_STORE__` | Shared session state (user, token, role) |
+
+Both are initialized in the shell **before** any remote loads:
+
+```ts
+// mfe-shell/src/bootstrap.tsx
+import { getAuthStore } from '@studying/mfe-shared/auth-store';
+import { getEventBus } from '@studying/mfe-shared/event-bus';
+
+getEventBus();
+getAuthStore();
+```
+
+Order matters. If a remote mounts and publishes before the singleton exists, you get race conditions or duplicate instances.
+
+## The Event Bus
+
+A lightweight pub/sub bus with typed events, source attribution, in-memory history for debugging, and — as of the latest pass — runtime payload validation via [zod](https://zod.dev).
+
+### A single source of truth for event shapes
+
+Every event's payload shape is defined once, as a zod schema, in `mfe-shared/event-schemas.ts`. Both the `MfeEventType` union and the payload types are *derived* from this record instead of hand-written, so there's exactly one place to add a new event:
+
+```ts
+// mfe-shared/event-schemas.ts
+export const eventPayloadSchemas = {
+  'dashboard:refresh': z.object({ source: z.string() }),
+  'analytics:track': z.object({ action: z.string() }),
+  'user:selected': z.object({ id: z.string(), name: z.string() }),
+  'product:viewed': z.object({ id: z.string(), name: z.string() }),
+  'auth:changed': z.object({
+    action: z.enum(['login', 'logout', 'role-switch']),
+    role: z.enum(['admin', 'editor', 'viewer']).optional(),
+  }),
+} as const satisfies Record<string, z.ZodTypeAny>;
+
+export type MfeEventType = keyof typeof eventPayloadSchemas;
+
+export type EventPayloadMap = {
+  [K in MfeEventType]: z.infer<(typeof eventPayloadSchemas)[K]>;
+};
+```
+
+### Core implementation
+
+```ts
+// mfe-shared/event-bus.ts
+const MAX_HISTORY = 200;
+
+function createEventBus(): MfeEventBus {
+  const listeners = new Map<MfeEventType, Set<MfeEventHandler<never>>>();
+  const history: MfeEvent[] = [];
+
+  return {
+    publish<T extends MfeEventType>(type: T, payload: EventPayloadMap[T], source: string) {
+      const result = eventPayloadSchemas[type].safeParse(payload);
+      if (!result.success) {
+        console.error(`[mfe-event-bus] rejected invalid "${type}" payload from "${source}"`, result.error.flatten());
+        return;
+      }
+
+      const event = { type, payload: result.data, source, timestamp: Date.now() };
+      history.push(event);
+      if (history.length > MAX_HISTORY) {
+        history.splice(0, history.length - MAX_HISTORY);
+      }
+      listeners.get(type)?.forEach((handler) => {
+        try {
+          handler(event);
+        } catch (error) {
+          console.error(`[mfe-event-bus] subscriber for "${type}" threw`, error);
+        }
+      });
+    },
+    subscribe<T extends MfeEventType>(type: T, handler: MfeEventHandler<T>) {
+      if (!listeners.has(type)) listeners.set(type, new Set());
+      listeners.get(type)!.add(handler);
+      return () => listeners.get(type)?.delete(handler);
+    },
+    getHistory() { return [...history]; },
+    clearHistory() { history.length = 0; },
+  };
+}
+
+export function getEventBus(): MfeEventBus {
+  if (window.__MFE_EVENT_BUS__) {
+    return window.__MFE_EVENT_BUS__;
+  }
+  const bus = Object.freeze(createEventBus());
+  Object.defineProperty(window, '__MFE_EVENT_BUS__', {
+    value: bus,
+    writable: false,
+    configurable: false,
+    enumerable: true,
+  });
+  return bus;
+}
+```
+
+Three things changed from the first version of this bus, worth calling out:
+
+1. **`publish` is generic over the event type**, so `EventPayloadMap[T]` ties the payload's compile-time type directly to whichever literal `type` you pass in — `publish('user:selected', { wrong: 'shape' }, 'x')` is now a *TypeScript* error before it's ever a runtime one.
+2. **`publish` validates with `safeParse` before delivering the event.** An invalid payload is logged and dropped — it never reaches a subscriber. This is the real fix for cross-remote version skew (more below).
+3. **`getEventBus()` returns early** instead of reading back `window.__MFE_EVENT_BUS__` after assigning it. `Object.defineProperty` is opaque to TypeScript's control-flow narrowing, so returning the local `bus` variable directly avoids a false "possibly undefined" type error on every call site.
+
+The singleton guard (`if (window.__MFE_EVENT_BUS__) return ...`) is critical for a different reason: without it, each remote that bundles its own copy of `event-bus.ts` could create a separate bus — subscribers in Analytics would never hear publishers in Users. The `Object.freeze` + `Object.defineProperty` combo goes one step further: it stops any remote (buggy or malicious) from reassigning the singleton or monkey-patching `publish`/`subscribe`.
+
+### Event types in our demo
+
+| Event | Publisher | Subscriber(s) |
+|-------|-----------|---------------|
+| `dashboard:refresh` | Shell (home, Event Bus page) | Dashboard |
+| `analytics:track` | Dashboard quick actions | Analytics |
+| `user:selected` | Users (Angular) | Analytics, Dashboard, Event Bus monitor |
+| `product:viewed` | Products (Vue) | Analytics, Event Bus monitor |
+| `auth:changed` | Shell topbar, Event Bus page | Event Bus monitor (future: all remotes) |
+
+Every event carries `source` (which app published) and `timestamp`. That metadata is invaluable when debugging "why didn't Analytics update?"
+
+### Subscribe pattern (React)
+
+```tsx
+useEffect(() => {
+  const unsubscribe = getEventBus().subscribe('user:selected', (event) => {
+    setLastUser(event.payload.name); // no cast — payload is EventPayloadMap['user:selected']
+  });
+  return unsubscribe; // cleanup on unmount
+}, []);
+```
+
+Because `subscribe` is generic over the event type, `event.payload` is already typed as `{ id: string; name: string }` — no `as` cast needed, and it's guaranteed to actually have that shape because `publish` validated it with zod before this handler ever ran.
+
+Always return the unsubscribe function from `useEffect`. Orphaned handlers are the #1 source of memory leaks in event-driven MFEs.
+
+## The Auth Store (Shared State)
+
+For **state** that multiple remotes read and write — session, permissions, theme — we use a Zustand **vanilla** store (not the React bindings). Vanilla stores are framework-agnostic: no React dependency, works from Angular services and Vue composables.
+
+```ts
+// mfe-shared/auth-store.ts
+import { createStore } from 'zustand/vanilla';
+
+function createAuthStore() {
+  return createStore<AuthState>((set) => ({
+    user: { id: '1', name: 'Admin User', email: 'admin@everythingme.dev', role: 'admin' },
+    token: 'demo-token-abc123',
+    isAuthenticated: true,
+    login: (user, token) => set({ user, token, isAuthenticated: true }),
+    logout: () => set({ user: null, token: null, isAuthenticated: false }),
+  }));
+}
+
+export function getAuthStore() {
+  if (window.__MFE_AUTH_STORE__) {
+    return window.__MFE_AUTH_STORE__;
+  }
+  const store = Object.freeze(createAuthStore());
+  Object.defineProperty(window, '__MFE_AUTH_STORE__', {
+    value: store,
+    writable: false,
+    configurable: false,
+    enumerable: true,
+  });
+  return store;
+}
+```
+
+Same early-return shape as `getEventBus()`, for the same reason — `Object.defineProperty` doesn't narrow the type of `window.__MFE_AUTH_STORE__` back to non-`undefined`, so returning the local `store` variable avoids a spurious type error at every call site.
+
+### React: read + subscribe
+
+```tsx
+const [auth, setAuth] = useState(() => getAuthStore().getState());
+
+useEffect(() => {
+  return getAuthStore().subscribe(setAuth);
+}, []);
+```
+
+### Angular: read on action
+
+```ts
+selectUser(user: UserRecord) {
+  const bus = window.__MFE_EVENT_BUS__;
+  bus?.publish('user:selected', { id: user.id, name: user.name }, 'mfe_users');
+}
+```
+
+Angular doesn't import `@studying/mfe-shared` via path alias in all setups — accessing `window.__MFE_EVENT_BUS__` directly avoids build config differences.
+
+### Vue: same window access
+
+```ts
+function viewProduct(product: ProductRecord) {
+  const bus = window.__MFE_EVENT_BUS__;
+  bus?.publish('product:viewed', { id: product.id, name: product.name }, 'mfe_products_vue');
+}
+```
+
+Angular and Vue lose TypeScript's compile-time payload check here, since they cast `window.__MFE_EVENT_BUS__` to a loosely-typed anonymous shape rather than importing `MfeEventBus` directly. That's exactly why the zod validation lives inside `publish()` itself and not just in TypeScript types — it's the one safety net every remote gets regardless of how strictly it's typed.
+
+### When to use bus vs store
+
+| Use event bus when | Use shared store when |
+|--------------------|----------------------|
+| Fire-and-forget notifications | Multiple remotes need current value |
+| You don't care about history after handle | State persists across navigations |
+| Loose coupling is preferred | Strong consistency needed (auth, cart) |
+
+Auth is store. "User clicked View" is bus. Don't put everything in one bucket.
+
+## The Event Bus Monitor Page
+
+We added `/event-bus` to the shell — a live control panel for the shared layer:
+
+1. **Live Event Stream** — subscribes to all five event types; shows type badge, source, framework, payload JSON, relative time
+2. **Publish Event** — pick type, edit JSON payload, publish from shell; quick-fire buttons for common scenarios
+3. **Auth State Inspector** — live view of `__MFE_AUTH_STORE__`; switch Admin/Editor/Viewer; login/logout
+4. **Stats bar** — per-event-type count and last-seen time
+
+### Try the full flow
+
+```bash
+pnpm mfe:all
+```
+
+Open http://localhost:4200/event-bus.
+
+1. Click **Simulate User Select** — event appears in the stream with source `mfe-shell`
+2. Navigate to **Users**, click View on a user — `user:selected` from `mfe_users` (Angular)
+3. Open **Dashboard** — Cross-Remote Signals panel shows the last selected user
+4. Open **Products**, view a product — `product:viewed` from `mfe_products_vue` (Vue)
+5. Switch role in Auth Inspector — `auth:changed` fires; Dashboard welcome message updates on next visit
+6. Open **Analytics** — Live Event Feed shows the same events
+
+The monitor makes invisible cross-app wiring visible. Essential for demos and debugging.
+
+## Hardening for Production
+
+Building the monitor made the shared layer easy to *see*. Once it was visible, it was also easy to run a production-readiness pass on it — and the first version had exactly the kind of bugs you'd expect from a demo that only ever runs for a few minutes at a time. Five fixes made it into the study app:
+
+### 1. Bound the event history
+
+The original `history.push(event)` had no ceiling. Fine for a five-minute demo session; a slow memory leak in any long-lived tab. Fixed with a ring buffer that trims from the front once it crosses `MAX_HISTORY`:
+
+```ts
+history.push(event);
+if (history.length > MAX_HISTORY) {
+  history.splice(0, history.length - MAX_HISTORY);
+}
+```
+
+The same class of bug existed in the Dashboard remote's activity feed (`setFeed` appending forever) — fixed the same way with a `.slice(0, 8)` cap.
+
+### 2. Isolate subscribers from each other
+
+```ts
+listeners.get(type)?.forEach((handler) => handler(event));
+```
+
+If any single handler throws, `Array.prototype.forEach` propagates the exception synchronously and skips every handler registered after it — in an MFE, that means a bug in the Angular remote's listener can silently stop the React Analytics remote from ever receiving the event, and the exception bubbles back into whatever unrelated code called `publish()`. Each handler now runs in its own try/catch:
+
+```ts
+listeners.get(type)?.forEach((handler) => {
+  try {
+    handler(event);
+  } catch (error) {
+    console.error(`[mfe-event-bus] subscriber for "${type}" threw`, error);
+  }
+});
+```
+
+One misbehaving remote can no longer take down the others.
+
+### 3. Freeze the singletons
+
+A plain `window.__MFE_EVENT_BUS__ = createEventBus()` is just an assignment — any script sharing the page (a browser extension, a compromised dependency in *any* of the five bundles) could later reassign it to a fake bus, or monkey-patch `publish` to snoop on every cross-remote event. `Object.freeze` on the returned API plus a non-writable, non-configurable `window` property closes that door:
+
+```ts
+const bus = Object.freeze(createEventBus());
+Object.defineProperty(window, '__MFE_EVENT_BUS__', {
+  value: bus,
+  writable: false,
+  configurable: false,
+  enumerable: true,
+});
+```
+
+The same treatment applies to the auth store, since it's the one holding the session token.
+
+### 4. Stop blocking the UI thread on bad input
+
+The Event Bus monitor's "Publish from Shell" panel used to call `alert('Invalid JSON payload')` on a parse failure — synchronous, inaccessible, and outside the design system. It's now inline state next to the textarea, and — since the next fix landed — it surfaces the actual zod validation message instead of a generic one:
+
+```tsx
+let parsed: unknown;
+try {
+  parsed = JSON.parse(payloadJson);
+} catch {
+  setPayloadError('Invalid JSON syntax — fix it and try again.');
+  return;
+}
+
+const result = publishUnknownPayload(selectedType, parsed, 'mfe-shell');
+setPayloadError(result.success ? null : result.message);
+```
+
+### 5. Validate payloads with zod at the boundary
+
+This was the biggest gap: every subscriber used to cast `event.payload as { name: string }` with nothing enforcing that shape at runtime. Since remotes are built and deployed independently, a publisher one version ahead or behind could send a payload the subscriber's cast doesn't match — and TypeScript, which only exists at build time, can't catch that.
+
+The fix, in three parts:
+
+- **One schema per event, in one file.** `mfe-shared/event-schemas.ts` defines a zod object schema for every `MfeEventType`, and both `MfeEventType` and `EventPayloadMap` are derived from it — there's no way for the type union and the runtime schema to drift apart, because they're the same source.
+- **`publish()` validates before delivering.** `eventPayloadSchemas[type].safeParse(payload)` runs on every call; an invalid payload is logged with `result.error.flatten()` and dropped rather than handed to subscribers.
+- **`publish`/`subscribe` are generic over the event type**, so `EventPayloadMap[T]` flows all the way from the call site to every subscriber's `event.payload` — no more `as` casts anywhere in the React consumers (`Dashboard.tsx`, `Analytics.tsx`).
+
+The one place that still needs an explicit (well-contained) type escape hatch is the Event Bus monitor's free-form "Publish from Shell" panel, because the event type there is chosen at runtime from a dropdown, not known at compile time:
+
+```ts
+function publishUnknownPayload(
+  type: MfeEventType,
+  rawPayload: unknown,
+  source: string,
+): { success: true } | { success: false; message: string } {
+  const result = eventPayloadSchemas[type].safeParse(rawPayload);
+  if (!result.success) {
+    return { success: false, message: formatZodError(result.error) };
+  }
+  (getEventBus().publish as (t: MfeEventType, p: unknown, s: string) => void)(type, result.data, source);
+  return { success: true };
+}
+```
+
+The cast here only works around TypeScript's inability to connect a runtime string to a generic literal type — the actual safety comes from `safeParse` running immediately before it, same as everywhere else. The monitor page even has a "Try invalid payload" button now, so you can watch a bad payload get rejected with a readable zod error instead of crashing a remote.
+
+None of these five fixes changed the public API or the demo's behavior for valid input — they just close gaps that only show up under real, sustained usage, cross-remote version skew, or adversarial input, which is exactly what a "toy" cross-remote layer needs before it earns the word "production."
+
+## Pitfalls
+
+### 1. Memory leaks from forgotten unsubscribes
+
+Every `subscribe` must have a matching cleanup. In React: return unsubscribe from `useEffect`. In Angular: `ngOnDestroy`. In Vue: `onUnmounted`. Bounding the bus's own history (above) protects the bus itself, but it doesn't save you from a component that never unsubscribes.
+
+### 2. Race conditions during bootstrap
+
+Shell must call `getEventBus()` and `getAuthStore()` in `bootstrap.tsx` before `ReactDOM.createRoot().render()`. Remotes that publish on mount will miss listeners if the bus isn't ready.
+
+### 3. Duplicate singleton instances
+
+If webpack bundles `event-bus.ts` into multiple chunks without deduplication, you get multiple buses. Mitigations:
+
+- Shared npm package (`mfe-shared`) imported by all apps
+- Module Federation `shared` config for the shared module
+- Always use `getEventBus()` — never `createEventBus()` directly (freezing the singleton, above, also makes accidental reassignment fail loudly instead of silently)
+
+### 4. Stale closures in subscribers
+
+A handler that closes over old state won't see updates. Prefer reading from the store inside the handler, or use functional `setState` updates.
+
+### 5. Over-using the bus for state
+
+Events are ephemeral. If Analytics needs "current selected user" on load, that's store territory — or re-fetch from URL/API. Bus events are for "something happened" not "here is the source of truth."
+
+### 6. Production auth
+
+Our demo uses a hardcoded Zustand store. Production needs OAuth flows, token refresh, secure httpOnly cookies, and likely a backend session service — a raw token should never live on `window` at all. The *pattern* (frozen singleton + subscribe) stays; the implementation doesn't.
+
+## What's Next
+
+- Validate the auth store's shape with zod too (`login()` currently trusts its caller the same way `publish()` used to)
+- Import the real `MfeEventBus`/`EventPayloadMap` types into the Angular and Vue remotes instead of the loosely-typed anonymous `window` casts, so those call sites get compile-time checking on top of the runtime one
+- Publish `auth:changed` subscribers in all remotes so logout propagates without a full page reload
+- Persist auth state and sync it across tabs (`localStorage` + `BroadcastChannel`)
+- Extract `mfe-shared` to a publishable internal package with semver, and version the zod schemas alongside it
+- Add Module Federation `shared` entries for `mfe-shared` to guarantee single instance
+- Consider RxJS Subject or mitt if event volume grows — same singleton pattern, different API
+
+The study app is a sandbox. The patterns — frozen singleton on window, typed pub/sub validated with zod at the boundary, framework-agnostic store, bootstrap ordering — translate directly to production MFE architectures. The Event Bus monitor is the teaching tool: make the invisible visible, break it on purpose, then harden it until it survives.
