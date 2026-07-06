@@ -1245,7 +1245,7 @@
               <div class="stack-row reveal"><div class="stack-bar" style="width:48px;background:#39d353"></div><span class="stack-label">Your message</span><span class="stack-tokens">20–500</span></div>
             </div>
             <figure class="context-screenshot reveal">
-              <img class="lightbox-img" src="images/context_instructions_file.png" alt="Copilot assembling context from instructions, skills, and files" data-caption="Copilot assembling context from instructions, skills, and files">
+              <img class="lightbox-img" src="/slides/copilot-token-optimization/images/context_instructions_file.png" alt="Copilot assembling context from instructions, skills, and files" data-caption="Copilot assembling context from instructions, skills, and files">
             </figure>
           </div>
         </div>
@@ -1260,15 +1260,15 @@
           <h2 class="reveal" style="font-size:42px;margin-bottom:12px;">A closer look at <span class="accent">chat context</span></h2>
           <div class="context-gallery">
             <figure class="context-gallery-item reveal">
-              <img class="lightbox-img" src="images/vscode_instructions.png" alt="Copilot custom instructions panel listing repo instruction files" data-caption="Instructions panel — what gets loaded">
+              <img class="lightbox-img" src="/slides/copilot-token-optimization/images/vscode_instructions.png" alt="Copilot custom instructions panel listing repo instruction files" data-caption="Instructions panel — what gets loaded">
               <figcaption>Instructions panel — click to view detail</figcaption>
             </figure>
             <figure class="context-gallery-item reveal">
-              <img class="lightbox-img" src="images/vscode_instructions_detail.png" alt="Expanded instruction file with front-end architecture rules" data-caption="Instruction file content sent to the model">
+              <img class="lightbox-img" src="/slides/copilot-token-optimization/images/vscode_instructions_detail.png" alt="Expanded instruction file with front-end architecture rules" data-caption="Instruction file content sent to the model">
               <figcaption>Instruction file content — click to view detail</figcaption>
             </figure>
             <figure class="context-gallery-item reveal">
-              <img class="lightbox-img" src="images/vscode_message_debug.png" alt="Copilot message debug view showing context assembly and token count" data-caption="Message debug — full context on each turn">
+              <img class="lightbox-img" src="/slides/copilot-token-optimization/images/vscode_message_debug.png" alt="Copilot message debug view showing context assembly and token count" data-caption="Message debug — full context on each turn">
               <figcaption>Message debug — click to view detail</figcaption>
             </figure>
           </div>
@@ -1519,7 +1519,7 @@
               <p>Một dòng code tệ là một dòng code tệ. Một dòng plan tệ có thể dẫn đến 100 dòng code tệ.</p>
             </div>
             <figure class="plan-quote-figure reveal">
-              <img class="lightbox-img" src="images/bad_plan_impact.png" alt="Impact of a bad plan multiplying into many lines of bad code" data-caption="Một dòng plan tệ → 100 dòng code tệ">
+              <img class="lightbox-img" src="/slides/copilot-token-optimization/images/bad_plan_impact.png" alt="Impact of a bad plan multiplying into many lines of bad code" data-caption="Một dòng plan tệ → 100 dòng code tệ">
             </figure>
           </div>
         </div>
@@ -1536,7 +1536,7 @@
               <p>Everything is compaction / compression.</p>
             </div>
             <figure class="plan-quote-figure reveal">
-              <img class="lightbox-img" src="images/everything_compression.png" alt="Everything is compaction and compression" data-caption="Everything is compaction / compression">
+              <img class="lightbox-img" src="/slides/copilot-token-optimization/images/everything_compression.png" alt="Everything is compaction and compression" data-caption="Everything is compaction / compression">
             </figure>
           </div>
         </div>
@@ -1799,6 +1799,10 @@
       syncSlideToUrl() {
         const slideNum = this.currentSlide + 1;
         const url = new URL(window.location.href);
+        const deckPath = '/slides/copilot-token-optimization/';
+        if (!url.pathname.endsWith('/')) {
+          url.pathname = deckPath;
+        }
         url.searchParams.set('slide', String(slideNum));
         url.searchParams.delete('s');
         const next = url.pathname + url.search + url.hash;
