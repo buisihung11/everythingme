@@ -232,6 +232,50 @@
     }
     .bullet-list li strong { color: var(--accent); font-weight: 500; }
 
+    .takeaway-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin-top: 28px;
+      max-width: 1480px;
+    }
+    .takeaway-item {
+      display: grid;
+      grid-template-columns: 72px 1fr;
+      gap: 20px;
+      align-items: start;
+      padding: 18px 24px;
+      border: 1px solid var(--border);
+      background: var(--accent-dim);
+    }
+    .takeaway-num {
+      font-family: var(--font-mono);
+      font-size: 28px;
+      font-weight: 500;
+      color: var(--accent);
+      letter-spacing: 0.04em;
+      line-height: 1.1;
+      padding-top: 2px;
+    }
+    .takeaway-body h3 {
+      font-size: 26px;
+      font-weight: 500;
+      color: var(--text-primary);
+      margin-bottom: 6px;
+      line-height: 1.25;
+    }
+    .takeaway-body p {
+      font-size: 18px;
+      color: var(--text-muted);
+      line-height: 1.4;
+      max-width: 1180px;
+    }
+    .takeaway-body code {
+      color: var(--accent-warn);
+      font-size: 16px;
+    }
+
     .two-col {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -3219,10 +3263,31 @@
           </div>
         </div>
       </section>
-      <!-- SLIDE: Output quality -->
+
+      <!-- SLIDE: Chronicle cost tips -->
       <section class="slide" data-editable data-section="levers">
         <div class="grid-bg"></div>
         <span class="slide-number reveal">58</span>
+        <div class="slide-inner top">
+          <p class="section-tag reveal">optimize tips</p>
+          <h2 class="reveal" style="font-size:40px;margin-bottom:8px;"><code>/chronicle cost tips</code> — find where <span class="accent">tokens</span> go</h2>
+          <p class="chronicle-lead reveal">To understand your token usage: run <code>/chronicle cost tips</code> to see where tokens are going and get suggestions for reducing costs.</p>
+          <div class="chronicle-patterns reveal">
+            <span>token hotspots</span>
+            <span>session cost</span>
+            <span>compact opportunities</span>
+            <span>model routing</span>
+          </div>
+          <figure class="usage-pattern-figure reveal">
+            <img class="lightbox-img" src="/slides/copilot-token-optimization-v2/images/chronical_cost_tip.png" alt="Chronicle cost tips ranked recommendations — split multi-feature work across sessions, use /compact before context doubles, route mechanical sub-tasks to a lighter model" data-caption="/chronicle cost tips — ranked recommendations for where tokens go and how to cut cost">
+          </figure>
+        </div>
+      </section>
+
+      <!-- SLIDE: Output quality -->
+      <section class="slide" data-editable data-section="levers">
+        <div class="grid-bg"></div>
+        <span class="slide-number reveal">59</span>
         <div class="slide-inner">
           <p class="section-tag reveal">optimize tips</p>
           <h2 class="reveal">Quality is a <span class="accent">cost control</span></h2>
@@ -3230,10 +3295,23 @@
           <p class="lead reveal" style="margin-top:28px;">One planning session in Plan mode typically costs less than a single failed implementation attempt.</p>
         </div>
       </section>
+      <!-- SLIDE: Agent ROI -->
+      <section class="slide" data-editable data-section="levers">
+        <div class="grid-bg"></div>
+        <span class="slide-number reveal">60</span>
+        <div class="slide-inner top">
+          <p class="section-tag reveal">optimize tips</p>
+          <h2 class="reveal" style="font-size:40px;margin-bottom:8px;">Quality impacts value impacts <span class="accent">ROI</span></h2>
+          <p class="lead reveal" style="max-width:1240px;margin-bottom:12px;font-size:22px;">Raising the value of agent output — not just cutting tokens — is what moves Agent ROI. Cheaper wrong answers still lose.</p>
+          <figure class="usage-pattern-figure reveal">
+            <img class="lightbox-img" src="/slides/copilot-token-optimization-v2/images/ROI.png" alt="Agent ROI formula: (Value of Agent Output minus Token Cost) divided by Token Cost times 100 percent — increasing output value often means decreasing wasted token cost" data-caption="Agent ROI — increase output value; decreasing wasted tokens follows">
+          </figure>
+        </div>
+      </section>
       <!-- SLIDE: Section opener — Summary -->
       <section class="slide" data-editable data-section="summary">
         <div class="grid-bg"></div>
-        <span class="slide-number reveal">59</span>
+        <span class="slide-number reveal">61</span>
         <div class="slide-inner section-opener">
           <p class="section-opener-num reveal">05 · Summary</p>
           <h2 class="reveal">What to <span class="accent">take home</span></h2>
@@ -3244,7 +3322,7 @@
       <!-- SLIDE: Habits -->
       <section class="slide" data-editable data-section="summary">
         <div class="grid-bg"></div>
-        <span class="slide-number reveal">60</span>
+        <span class="slide-number reveal">62</span>
         <div class="slide-inner">
           <p class="section-tag reveal">summary</p>
           <h2 class="reveal">Four deliberate <span class="accent">habits</span></h2>
@@ -3254,6 +3332,52 @@
             <li class="reveal">Model-appropriate tasks — right tool, right job</li>
             <li class="reveal">Plan before coding — resolve assumptions first</li>
           </ul>
+        </div>
+      </section>
+      <!-- SLIDE: Key takeaways -->
+      <section class="slide" data-editable data-section="summary">
+        <div class="grid-bg"></div>
+        <span class="slide-number reveal">63</span>
+        <div class="slide-inner top">
+          <p class="section-tag reveal">summary</p>
+          <h2 class="reveal">Key <span class="accent">takeaways</span></h2>
+          <ol class="takeaway-list">
+            <li class="takeaway-item reveal">
+              <span class="takeaway-num">01</span>
+              <div class="takeaway-body">
+                <h3>Shrink the re-send</h3>
+                <p>Every turn re-ships history — focused prompts, lean instructions, and fresh chats cut the bill.</p>
+              </div>
+            </li>
+            <li class="takeaway-item reveal">
+              <span class="takeaway-num">02</span>
+              <div class="takeaway-body">
+                <h3>Phase the work</h3>
+                <p>Understand → Gather → Plan → Execute → Verify, with human review between steps.</p>
+              </div>
+            </li>
+            <li class="takeaway-item reveal">
+              <span class="takeaway-num">03</span>
+              <div class="takeaway-body">
+                <h3>Plan, then parallelize</h3>
+                <p>Lock the plan first; use <code>/fleet</code> for independent FE/BE tasks so each subagent keeps its own context.</p>
+              </div>
+            </li>
+            <li class="takeaway-item reveal">
+              <span class="takeaway-num">04</span>
+              <div class="takeaway-body">
+                <h3>Verify with real signals</h3>
+                <p>Project commands and unit tests stop compound error before it multiplies.</p>
+              </div>
+            </li>
+            <li class="takeaway-item reveal">
+              <span class="takeaway-num">05</span>
+              <div class="takeaway-body">
+                <h3>Quality is cheapest</h3>
+                <p>The wrong answer is the most expensive token — right-size the model and architecture for discovery.</p>
+              </div>
+            </li>
+          </ol>
         </div>
       </section>
       <!-- SLIDE: Closing -->
@@ -3270,7 +3394,7 @@
   </div>
 
   <nav class="deck-controls" aria-label="Slide navigation">
-    <span id="slideCounter">1 / 60</span>
+    <span id="slideCounter">1 / 63</span>
     <span>·</span>
     <span><kbd>←</kbd> <kbd>→</kbd> navigate</span>
     <span>·</span>
