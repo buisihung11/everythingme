@@ -1,25 +1,12 @@
 import { Link, useRouterState } from '@tanstack/react-router'
-import { SUB_CATEGORIES } from '#/lib/blog'
-
-function getActiveCategory(pathname: string, searchCategory?: string) {
-  if (pathname.startsWith('/personal')) {
-    return searchCategory ?? 'all'
-  }
-
-  if (pathname.startsWith('/blog/personal/')) {
-    const segment = pathname.split('/')[3]
-    if (segment === 'travel' || segment === 'thoughts') return segment
-  }
-
-  return 'all'
-}
+import { getActivePersonalCategory, SUB_CATEGORIES } from '#/lib/blog'
 
 export default function PersonalCategoryNav() {
   const pathname = useRouterState({ select: (state) => state.location.pathname })
   const search = useRouterState({
     select: (state) => state.location.search as { category?: string },
   })
-  const activeCategory = getActiveCategory(pathname, search.category)
+  const activeCategory = getActivePersonalCategory(pathname, search.category)
 
   return (
     <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
