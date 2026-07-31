@@ -72,6 +72,7 @@
     "vue-tsc": "^2.2.8"
   },
   "dependencies": {
+    "@everythingme/api": "workspace:*",
     "@angular/common": "~21.2.0",
     "@angular/compiler": "~21.2.0",
     "@angular/core": "~21.2.0",
