@@ -1,14 +1,8 @@
 import { useEffect, useState } from 'react';
 import { getEventBus } from '@studying/mfe-shared/event-bus';
 import { getAuthStore } from '@studying/mfe-shared/auth-store';
+import { fetchDashboardStats } from '@studying/mfe-shared/api/dashboard';
 import type { ActivityItem, DashboardStats } from '@studying/mfe-shared/types';
-
-const stats: DashboardStats = {
-  totalUsers: 1284,
-  totalProducts: 342,
-  revenue: 89420,
-  activeSessions: 87,
-};
 
 const activities: ActivityItem[] = [
   { id: '1', message: 'New user registered: alice@example.com', time: '2 min ago', type: 'success' },
@@ -17,18 +11,37 @@ const activities: ActivityItem[] = [
   { id: '4', message: 'Order #4821 completed — $129.00', time: '1 hour ago', type: 'success' },
 ];
 
-const statCards = [
-  { label: 'Total Users', value: stats.totalUsers, key: 'totalUsers' as const },
-  { label: 'Products', value: stats.totalProducts, key: 'totalProducts' as const },
-  { label: 'Revenue', value: `$${stats.revenue.toLocaleString()}`, key: 'revenue' as const },
-  { label: 'Active Sessions', value: stats.activeSessions, key: 'activeSessions' as const },
-];
+const DEFAULT_STATS: DashboardStats = {
+  totalUsers: 0,
+  totalProducts: 0,
+  revenue: 0,
+  activeSessions: 0,
+};
 
 export function Dashboard() {
+  const [stats, setStats] = useState<DashboardStats>(DEFAULT_STATS);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [statsError, setStatsError] = useState<string | null>(null);
   const [feed, setFeed] = useState(activities);
   const [lastSelectedUser, setLastSelectedUser] = useState<string | null>(null);
   const [receivedEventCount, setReceivedEventCount] = useState(0);
   const auth = getAuthStore().getState();
+
+  useEffect(() => {
+    setStatsLoading(true);
+    setStatsError(null);
+    fetchDashboardStats({})
+      .then((data) => setStats(data))
+      .catch((err: unknown) => setStatsError(err instanceof Error ? err.message : String(err)))
+      .finally(() => setStatsLoading(false));
+  }, []);
+
+  const statCards = [
+    { label: 'Total Users', value: statsLoading ? '…' : stats.totalUsers, key: 'totalUsers' as const },
+    { label: 'Products', value: statsLoading ? '…' : stats.totalProducts, key: 'totalProducts' as const },
+    { label: 'Revenue', value: statsLoading ? '…' : `$${stats.revenue.toLocaleString()}`, key: 'revenue' as const },
+    { label: 'Active Sessions', value: statsLoading ? '…' : stats.activeSessions, key: 'activeSessions' as const },
+  ];
 
   useEffect(() => {
     const bus = getEventBus();
@@ -66,13 +79,18 @@ export function Dashboard() {
         <span className="mfe-concept-tag">React Remote</span>
         <span className="mfe-concept-tag">Module Federation</span>
         <span className="mfe-concept-tag">Event Bus Subscriber</span>
+        <span className="mfe-concept-tag">@everythingme/api</span>
       </div>
 
       <div className="mfe-card">
         <h2 className="text-2xl font-bold">Dashboard</h2>
         <p className="mt-1 text-sm text-admin-muted">
           Welcome back, {auth.user?.name}. This module is a React remote loaded by the shell.
+          Stats are fetched via <code className="text-sky-300">@everythingme/api</code>.
         </p>
+        {statsError && (
+          <p className="mt-2 text-sm text-red-400">Failed to load stats: {statsError}</p>
+        )}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

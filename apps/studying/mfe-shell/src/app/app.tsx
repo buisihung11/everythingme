@@ -5,6 +5,7 @@ import { RemoteErrorBoundary } from './components/ErrorBoundary';
 import { AngularUsersHost } from './remotes/AngularUsersHost';
 import { VueProductsHost } from './remotes/VueProductsHost';
 import { EventBusPage } from './pages/EventBusPage';
+import { ApiPipelinePage } from './pages/ApiPipelinePage';
 import { getEventBus } from '@studying/mfe-shared/event-bus';
 
 const MfeDashboard = React.lazy(() => import('mfe-dashboard/Module'));
@@ -63,6 +64,7 @@ export function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/event-bus" element={<EventBusPage />} />
+        <Route path="/api-pipeline" element={<ApiPipelinePage />} />
         <Route
           path="/dashboard"
           element={

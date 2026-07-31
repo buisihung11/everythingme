@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom';
 const navItems = [
   { to: '/', label: 'Overview', concept: 'Host Shell' },
   { to: '/event-bus', label: 'Event Bus', concept: 'Shared State' },
+  { to: '/api-pipeline', label: 'API Pipeline', concept: '@everythingme/api' },
   { to: '/dashboard', label: 'Dashboard', concept: 'React Remote' },
   { to: '/users', label: 'Users', concept: 'Angular Remote' },
   { to: '/products', label: 'Products', concept: 'Vue Remote' },

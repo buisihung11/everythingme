@@ -15,6 +15,7 @@ const EVENT_TYPES: MfeEventType[] = [
   'user:selected',
   'product:viewed',
   'auth:changed',
+  'api:event',
 ];
 
 const EVENT_TYPE_STYLES: Record<MfeEventType, string> = {
@@ -23,6 +24,7 @@ const EVENT_TYPE_STYLES: Record<MfeEventType, string> = {
   'user:selected': 'bg-violet-500/20 text-violet-200 border-violet-500/30',
   'product:viewed': 'bg-amber-500/20 text-amber-200 border-amber-500/30',
   'auth:changed': 'bg-rose-500/20 text-rose-200 border-rose-500/30',
+  'api:event': 'bg-orange-500/20 text-orange-200 border-orange-500/30',
 };
 
 const SOURCE_STYLES: Record<string, string> = {
@@ -60,6 +62,7 @@ const DEFAULT_PAYLOADS: EventPayloadMap = {
   'user:selected': { id: 'demo-1', name: 'Demo User' },
   'product:viewed': { id: 'demo-p1', name: 'Demo Product' },
   'auth:changed': { action: 'role-switch' },
+  'api:event': { kind: 'log:info', label: 'manual api:event' },
 };
 
 /**
