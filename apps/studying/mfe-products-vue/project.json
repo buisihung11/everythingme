@@ -1,0 +1,21 @@
+{
+  "name": "mfe_products_vue",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "apps/studying/mfe-products-vue/src",
+  "tags": ["scope:studying", "type:app", "category:mfe"],
+  "targets": {
+    "serve": {
+      "executor": "nx:run-commands",
+      "continuous": true,
+      "options": {
+        "cwd": "apps/studying/mfe-products-vue",
+        "commands": [
+          "vite build --watch --mode development",
+          "vite preview --port 4203 --strictPort --host localhost"
+        ],
+        "parallel": true
+      }
+    }
+  }
+}

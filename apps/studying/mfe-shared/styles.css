@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-admin-bg text-slate-100 antialiased;
+  }
+}
+
+@layer components {
+  .mfe-card {
+    @apply rounded-xl border border-admin-border bg-admin-surface p-5 shadow-lg;
+  }
+
+  .mfe-badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+
+  .mfe-btn {
+    @apply inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition-colors;
+  }
+
+  .mfe-btn-primary {
+    @apply mfe-btn bg-sky-500 text-white hover:bg-sky-400;
+  }
+
+  .mfe-concept-tag {
+    @apply mfe-badge bg-sky-500/20 text-sky-300 ring-1 ring-sky-500/30;
+  }
+}

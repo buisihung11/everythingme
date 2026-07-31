@@ -1,0 +1,90 @@
+{
+  "name": "mfe_analytics",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/studying/mfe_analytics/src",
+  "projectType": "application",
+  "tags": ["scope:studying", "type:app", "category:mfe"],
+  "targets": {
+    "build": {
+      "executor": "@nx/webpack:webpack",
+      "outputs": [
+        "{options.outputPath}"
+      ],
+      "defaultConfiguration": "production",
+      "options": {
+        "compiler": "babel",
+        "outputPath": "dist/apps/studying/mfe_analytics",
+        "index": "apps/studying/mfe_analytics/src/index.html",
+        "baseHref": "/",
+        "main": "apps/studying/mfe_analytics/src/main.ts",
+        "tsConfig": "apps/studying/mfe_analytics/tsconfig.app.json",
+        "assets": [
+          "apps/studying/mfe_analytics/src/favicon.ico",
+          "apps/studying/mfe_analytics/src/assets"
+        ],
+        "styles": [],
+        "scripts": [],
+        "webpackConfig": "apps/studying/mfe_analytics/webpack.config.ts"
+      },
+      "configurations": {
+        "development": {
+          "extractLicenses": false,
+          "optimization": false,
+          "sourceMap": true,
+          "vendorChunk": true
+        },
+        "production": {
+          "fileReplacements": [
+            {
+              "replace": "apps/studying/mfe_analytics/src/environments/environment.ts",
+              "with": "apps/studying/mfe_analytics/src/environments/environment.prod.ts"
+            }
+          ],
+          "optimization": true,
+          "outputHashing": "all",
+          "sourceMap": false,
+          "namedChunks": false,
+          "extractLicenses": true,
+          "vendorChunk": false,
+          "webpackConfig": "apps/studying/mfe_analytics/webpack.config.prod.ts"
+        }
+      }
+    },
+    "serve": {
+      "executor": "@nx/webpack:dev-server",
+      "defaultConfiguration": "development",
+      "options": {
+        "buildTarget": "mfe_analytics:build",
+        "hmr": true,
+        "port": 4204
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "mfe_analytics:build:development"
+        },
+        "production": {
+          "buildTarget": "mfe_analytics:build:production",
+          "hmr": false
+        }
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    },
+    "serve-static": {
+      "executor": "@nx/react:module-federation-static-server",
+      "defaultConfiguration": "production",
+      "options": {
+        "serveTarget": "mfe_analytics:serve"
+      },
+      "configurations": {
+        "development": {
+          "serveTarget": "mfe_analytics:serve:development"
+        },
+        "production": {
+          "serveTarget": "mfe_analytics:serve:production"
+        }
+      }
+    }
+  }
+}

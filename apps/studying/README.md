@@ -21,3 +21,7 @@ apps/studying/<project-name>/
 3. Write lessons as you go — the goal is understanding, not polish.
 
 See `example/lessons/` for the documentation template.
+
+## Projects
+
+- **mfe-admin** — Micro Frontend admin study app (React shell + Angular/Vue/React remotes). See [`mfe-admin/README.md`](mfe-admin/README.md).
