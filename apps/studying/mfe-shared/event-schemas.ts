@@ -24,6 +24,14 @@ export const eventPayloadSchemas = {
     action: z.enum(['login', 'logout', 'role-switch']),
     role: z.enum(['admin', 'editor', 'viewer']).optional(),
   }),
+  'api:event': z.object({
+    kind: z.enum(['span:start', 'span:end', 'log:info', 'log:error']),
+    label: z.string(),
+    feature: z.string().optional(),
+    action: z.string().optional(),
+    durationMs: z.number().optional(),
+    error: z.string().optional(),
+  }),
 } as const satisfies Record<string, z.ZodTypeAny>;
 
 export type MfeEventType = keyof typeof eventPayloadSchemas;
