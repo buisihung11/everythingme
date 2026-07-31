@@ -6,6 +6,7 @@ import type {
   ApiExecutionContext,
 } from './types.js';
 import { composePipeline } from './pipeline.js';
+import { validate, validateOutput } from './middleware/validation.js';
 
 export interface ApiActionConfig<
   TContext extends ApiExecutionContext,
@@ -14,10 +15,6 @@ export interface ApiActionConfig<
 > {
   metadata: ApiMetadata;
   middleware: ReadonlyArray<ApiMiddleware<TInput, TOutput, TContext>>;
-  /** Stored for PR3 validation middleware wiring via input(). */
-  inputSchema?: StandardSchemaV1<unknown, TInput>;
-  /** Stored for PR3 validation middleware wiring via output(). */
-  outputSchema?: StandardSchemaV1<unknown, TOutput>;
 }
 
 /** A built, callable action. Carries readonly metadata for introspection. */
@@ -71,30 +68,23 @@ export class ApiActionClient<
   }
 
   /**
-   * Declares the input schema and narrows TInput.
-   * In PR3 this becomes sugar for `use(validate(schema))`;
-   * for now it stores the schema in config for downstream wiring.
+   * Sugar for `.use(validate(schema))`. Narrows TInput to the schema's output type.
    */
   input<TNewInput>(
     schema: StandardSchemaV1<unknown, TNewInput>,
   ): ApiActionClient<TContext, TNewInput, TOutput> {
-    return new ApiActionClient<TContext, TNewInput, TOutput>({
-      ...(this._config as unknown as ApiActionConfig<TContext, TNewInput, TOutput>),
-      inputSchema: schema,
-    });
+    const base = this as unknown as ApiActionClient<TContext, TNewInput, TOutput>;
+    return base.use(validate<TNewInput, TOutput, TContext>(schema));
   }
 
   /**
-   * Declares the output schema and narrows TOutput.
-   * In PR3 this becomes sugar for `use(validateOutput(schema))`.
+   * Sugar for `.use(validateOutput(schema))`. Narrows TOutput to the schema's output type.
    */
   output<TNewOutput>(
     schema: StandardSchemaV1<unknown, TNewOutput>,
   ): ApiActionClient<TContext, TInput, TNewOutput> {
-    return new ApiActionClient<TContext, TInput, TNewOutput>({
-      ...(this._config as unknown as ApiActionConfig<TContext, TInput, TNewOutput>),
-      outputSchema: schema,
-    });
+    const base = this as unknown as ApiActionClient<TContext, TInput, TNewOutput>;
+    return base.use(validateOutput<TInput, TNewOutput, TContext>(schema));
   }
 
   /**

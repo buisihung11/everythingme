@@ -21,3 +21,5 @@ export { composePipeline } from './pipeline.js';
 
 export type { ApiActionConfig, ApiAction } from './client.js';
 export { ApiActionClient, createApiClient } from './client.js';
+
+export * from './middleware/index.js';

@@ -377,7 +377,11 @@ importers:
         specifier: ^3.4.19
         version: 3.4.19(tsx@4.22.4)(yaml@2.9.0)
 
-  libs/foundation/api: {}
+  libs/foundation/api:
+    devDependencies:
+      zod:
+        specifier: 'catalog:'
+        version: 4.4.3
 
   libs/foundation/auth:
     dependencies:
