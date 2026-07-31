@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { retry, timeout } from '@everythingme/api';
 import { api } from './client';
-import { mockTransport } from './transport';
+import { setAxiosMockFlakiness } from './axios-client';
+import { axiosTransport } from './transport';
 import type { DashboardStats } from '../types';
 
 const fetchDashboardStatsSchema = z.object({
@@ -12,16 +13,20 @@ const fetchDashboardStatsSchema = z.object({
   simulateFlakiness: z.boolean().optional(),
 }).default({});
 
+const dashboardStatsSchema = z.object({
+  totalUsers: z.number(),
+  totalProducts: z.number(),
+  revenue: z.number(),
+  activeSessions: z.number(),
+});
+
 export const fetchDashboardStats = api
   .metadata({ feature: 'dashboard', action: 'fetch-stats' })
   .input(fetchDashboardStatsSchema)
+  .output(dashboardStatsSchema)
   .use(retry({ attempts: 3, delayMs: 200 }))
   .use(timeout({ ms: 2000 }))
   .handler(async ({ input, ctx }) => {
-    if (input.simulateFlakiness) {
-      mockTransport.setFlakiness(0.8);
-    } else {
-      mockTransport.setFlakiness(0);
-    }
-    return mockTransport.get<DashboardStats>('/stats', { signal: ctx.signal });
+    setAxiosMockFlakiness(input.simulateFlakiness ? 0.8 : 0);
+    return axiosTransport.get<DashboardStats>('/stats', { signal: ctx.signal });
   });

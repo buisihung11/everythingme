@@ -1,3 +1,6 @@
+import type { AxiosInstance } from 'axios';
+import { axiosClient } from './axios-client';
+
 export interface TransportOptions {
   signal?: AbortSignal;
 }
@@ -6,16 +9,17 @@ export interface Transport {
   get<T>(path: string, options?: TransportOptions): Promise<T>;
 }
 
-/** Realistic fetch transport for when a real API is available. */
-export const fetchTransport: Transport = {
-  async get<T>(path: string, options?: TransportOptions): Promise<T> {
-    const response = await fetch(path, { signal: options?.signal });
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-    return response.json() as Promise<T>;
-  },
-};
+/** Axios-backed transport for real HTTP calls. */
+export function createAxiosTransport(client: AxiosInstance): Transport {
+  return {
+    async get<T>(path: string, options?: TransportOptions): Promise<T> {
+      const { data } = await client.get<T>(path, { signal: options?.signal });
+      return data;
+    },
+  };
+}
+
+export const axiosTransport = createAxiosTransport(axiosClient);
 
 export interface MockTransportOptions {
   /** Simulated latency in ms. Default: 300. */
