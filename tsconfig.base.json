@@ -31,6 +31,9 @@
       "@everythingme/ui": [
         "libs/foundation/ui/src/index.ts"
       ],
+      "@everythingme/api": [
+        "libs/foundation/api/src/index.ts"
+      ],
       "@studying/mfe-shared/*": ["apps/studying/mfe-shared/*"],
       "mfe_dashboard/Module": [
         "./apps/studying/mfe_dashboard/src/remote-entry.ts"

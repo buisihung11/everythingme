@@ -1,0 +1,16 @@
+{
+  "name": "foundation-api",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/foundation/api/src",
+  "projectType": "library",
+  "tags": ["scope:foundation", "type:lib"],
+  "targets": {
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm vitest run",
+        "cwd": "libs/foundation/api"
+      }
+    }
+  }
+}
