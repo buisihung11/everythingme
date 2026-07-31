@@ -10,15 +10,52 @@
     "importHelpers": true,
     "target": "ES2022",
     "module": "ESNext",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "skipLibCheck": true,
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@everythingme/config": ["libs/foundation/config/src/index.ts"],
-      "@everythingme/db": ["libs/foundation/db/src/index.ts"],
-      "@everythingme/auth": ["libs/foundation/auth/src/index.ts"],
-      "@everythingme/ui": ["libs/foundation/ui/src/index.ts"]
+      "@everythingme/config": [
+        "libs/foundation/config/src/index.ts"
+      ],
+      "@everythingme/db": [
+        "libs/foundation/db/src/index.ts"
+      ],
+      "@everythingme/auth": [
+        "libs/foundation/auth/src/index.ts"
+      ],
+      "@everythingme/ui": [
+        "libs/foundation/ui/src/index.ts"
+      ],
+      "@studying/mfe-shared/*": ["apps/studying/mfe-shared/*"],
+      "mfe_dashboard/Module": [
+        "./apps/studying/mfe_dashboard/src/remote-entry.ts"
+      ],
+      "mfe-dashboard/Module": [
+        "./apps/studying/mfe_dashboard/src/remote-entry.ts"
+      ],
+      "mfe_products/Module": [
+        "./apps/studying/mfe_products/src/remote-entry.ts"
+      ],
+      "mfe_analytics/Module": [
+        "./apps/studying/mfe_analytics/src/remote-entry.ts"
+      ],
+      "mfe-analytics/Module": [
+        "./apps/studying/mfe_analytics/src/remote-entry.ts"
+      ],
+      "mfe_users/Routes": [
+        "./apps/studying/mfe_users/src/app/remote-entry/entry.routes.ts"
+      ],
+      "mfe_users/Mount": [
+        "./apps/studying/mfe_users/src/app/remote-entry/mount.ts"
+      ],
+      "mfe-products/Products": [
+        "./apps/studying/mfe-products-vue/src/remote-entry.ts"
+      ]
     },
     "strict": true,
     "esModuleInterop": true,
@@ -26,5 +63,8 @@
     "isolatedModules": true,
     "jsx": "react-jsx"
   },
-  "exclude": ["node_modules", "tmp"]
+  "exclude": [
+    "node_modules",
+    "tmp"
+  ]
 }

@@ -1,0 +1,8 @@
+{
+  "name": "mfe-admin-docs",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/studying/mfe-admin",
+  "projectType": "application",
+  "tags": ["scope:studying", "type:docs", "category:mfe"],
+  "targets": {}
+}
