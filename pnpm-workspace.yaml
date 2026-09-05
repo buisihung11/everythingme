@@ -1,12 +1,12 @@
 packages:
-  - 'apps/*'
-  - 'apps/*/*'
-  - 'libs/foundation/*'
-
-autoInstallPeers: true
+  - apps/*
+  - apps/*/*
+  - libs/foundation/*
 
 allowBuilds:
   nx: true
+
+autoInstallPeers: true
 
 catalog:
   react: ^19.0.0

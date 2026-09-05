@@ -1,6 +1,6 @@
-import { createMiddleware } from '../create-middleware.js';
-import { ApiTimeoutError } from '../errors.js';
-import type { ApiExecutionContext } from '../types.js';
+import { createMiddleware } from '../create-middleware';
+import { ApiTimeoutError } from '../errors';
+import type { ApiExecutionContext } from '../types';
 
 export interface TimeoutOptions {
   /** Milliseconds before the action is considered timed out. */

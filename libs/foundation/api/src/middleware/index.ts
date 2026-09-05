@@ -1,16 +1,16 @@
-export { validate, validateOutput } from './validation.js';
-export type { } from './validation.js';
+export { validate, validateOutput } from './validation';
+export type { } from './validation';
 
-export { telemetry } from './telemetry.js';
-export type { ApiSpan, ApiTracer, TelemetryOptions } from './telemetry.js';
+export { telemetry } from './telemetry';
+export type { ApiSpan, ApiTracer, TelemetryOptions } from './telemetry';
 
-export { logging } from './logging.js';
-export type { ApiLogger, LoggingOptions } from './logging.js';
+export { logging } from './logging';
+export type { ApiLogger, LoggingOptions } from './logging';
 
-export { retry } from './retry.js';
-export type { RetryOptions } from './retry.js';
+export { retry } from './retry';
+export type { RetryOptions } from './retry';
 
-export { timeout } from './timeout.js';
-export type { TimeoutOptions } from './timeout.js';
+export { timeout } from './timeout';
+export type { TimeoutOptions } from './timeout';
 
-export { errorNormalization } from './error-normalization.js';
+export { errorNormalization } from './error-normalization';

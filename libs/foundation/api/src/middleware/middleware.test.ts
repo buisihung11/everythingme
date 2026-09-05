@@ -1,19 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { z } from 'zod';
-import { createApiClient } from '../client.js';
+import { createApiClient } from '../client';
 import {
   ApiError,
   ApiValidationError,
   ApiTimeoutError,
-} from '../errors.js';
-import { validate, validateOutput } from './validation.js';
-import { telemetry } from './telemetry.js';
-import type { ApiSpan, ApiTracer } from './telemetry.js';
-import { logging } from './logging.js';
-import type { ApiLogger } from './logging.js';
-import { retry } from './retry.js';
-import { timeout } from './timeout.js';
-import { errorNormalization } from './error-normalization.js';
+} from '../errors';
+import { validate, validateOutput } from './validation';
+import { telemetry } from './telemetry';
+import type { ApiSpan, ApiTracer } from './telemetry';
+import { logging } from './logging';
+import type { ApiLogger } from './logging';
+import { retry } from './retry';
+import { timeout } from './timeout';
+import { errorNormalization } from './error-normalization';
 
 // ---------------------------------------------------------------------------
 // validate

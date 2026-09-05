@@ -1,5 +1,5 @@
-import { createMiddleware } from '../create-middleware.js';
-import type { ApiExecutionContext } from '../types.js';
+import { createMiddleware } from '../create-middleware';
+import type { ApiExecutionContext } from '../types';
 
 /** Logger port — defaults to console. */
 export interface ApiLogger {

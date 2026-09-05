@@ -1,4 +1,4 @@
-export type { StandardSchemaV1 } from './standard-schema.js';
+export type { StandardSchemaV1 } from './standard-schema';
 
 export type {
   ApiMetadata,
@@ -6,20 +6,20 @@ export type {
   ApiMiddleware,
   ApiMiddlewareRequest,
   ApiHandler,
-} from './types.js';
+} from './types';
 
 export {
   ApiError,
   ApiValidationError,
   ApiTimeoutError,
   normalizeError,
-} from './errors.js';
+} from './errors';
 
-export { createMiddleware } from './create-middleware.js';
+export { createMiddleware } from './create-middleware';
 
-export { composePipeline } from './pipeline.js';
+export { composePipeline } from './pipeline';
 
-export type { ApiActionConfig, ApiAction } from './client.js';
-export { ApiActionClient, createApiClient } from './client.js';
+export type { ApiActionConfig, ApiAction } from './client';
+export { ApiActionClient, createApiClient } from './client';
 
-export * from './middleware/index.js';
+export * from './middleware/index';

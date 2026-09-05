@@ -1,8 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
-import { createApiClient } from './client.js';
-import { createMiddleware } from './create-middleware.js';
-import { composePipeline } from './pipeline.js';
-import type { ApiExecutionContext } from './types.js';
+import { createApiClient } from './client';
+import { createMiddleware } from './create-middleware';
+import { composePipeline } from './pipeline';
+import type { ApiExecutionContext } from './types';
 
 // ---------------------------------------------------------------------------
 // Builder immutability

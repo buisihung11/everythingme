@@ -1,7 +1,7 @@
-import { createMiddleware } from '../create-middleware.js';
-import { ApiValidationError } from '../errors.js';
-import type { StandardSchemaV1 } from '../standard-schema.js';
-import type { ApiExecutionContext } from '../types.js';
+import { createMiddleware } from '../create-middleware';
+import { ApiValidationError } from '../errors';
+import type { StandardSchemaV1 } from '../standard-schema';
+import type { ApiExecutionContext } from '../types';
 
 /**
  * Validates the incoming input against a Standard Schema.
