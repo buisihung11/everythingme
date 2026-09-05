@@ -53,6 +53,24 @@ describe('validate middleware', () => {
     expect((received as { count: number }).count).toBe(42);
   });
 
+  it('forwards a schema transform that produces null (does not resurrect raw input)', async () => {
+    const clearSchema = z
+      .string()
+      .nullable()
+      .transform((value) => (value === '' ? null : value));
+    let received: unknown = 'sentinel';
+
+    const action = createApiClient()
+      .input(clearSchema)
+      .handler(async ({ input }) => {
+        received = input;
+        return input;
+      });
+
+    expect(await action('')).toBeNull();
+    expect(received).toBeNull();
+  });
+
   it('throws ApiValidationError on invalid output', async () => {
     const outputSchema = z.object({ id: z.number() });
     const action = createApiClient()
@@ -271,6 +289,46 @@ describe('timeout middleware', () => {
 
     await action({}).catch(() => undefined);
     expect(capturedSignal?.aborted).toBe(true);
+  });
+
+  it('throws ApiTimeoutError (not AbortError) when the handler rejects on abort', async () => {
+    const action = createApiClient()
+      .use(timeout({ ms: 20 }))
+      .handler(({ ctx }) => {
+        return new Promise((_, reject) => {
+          ctx.signal?.addEventListener('abort', () => {
+            reject(new DOMException('Aborted', 'AbortError'));
+          });
+        });
+      });
+
+    await expect(action({})).rejects.toBeInstanceOf(ApiTimeoutError);
+  });
+
+  it('does not emit unhandledRejection when the handler rejects after timeout', async () => {
+    const unhandled: unknown[] = [];
+    const onUnhandled = (reason: unknown) => {
+      unhandled.push(reason);
+    };
+    process.on('unhandledRejection', onUnhandled);
+
+    try {
+      const action = createApiClient()
+        .use(timeout({ ms: 20 }))
+        .handler(({ ctx }) => {
+          return new Promise((_, reject) => {
+            ctx.signal?.addEventListener('abort', () => {
+              reject(new Error('handler aborted after timeout'));
+            });
+          });
+        });
+
+      await expect(action({})).rejects.toBeInstanceOf(ApiTimeoutError);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(unhandled).toEqual([]);
+    } finally {
+      process.off('unhandledRejection', onUnhandled);
+    }
   });
 });
 
