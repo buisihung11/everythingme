@@ -1,0 +1,91 @@
+name: Deploy Architecture Village to Vercel
+
+on:
+  push:
+    branches:
+      - main
+      - codex/to-app-3d-design-system
+    paths:
+      - 'apps/architecture-village/**'
+      - '.github/workflows/architecture-village-deploy.yml'
+  workflow_dispatch:
+    inputs:
+      production:
+        description: Deploy to production (unchecked creates a preview)
+        type: boolean
+        default: true
+
+concurrency:
+  group: deploy-architecture-village-${{ github.event_name == 'workflow_dispatch' && inputs.production && 'production' || github.ref }}
+  cancel-in-progress: true
+
+env:
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_ARCHITECTURE_VILLAGE }}
+  VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+  VERCEL: '1'
+  CI: true
+
+jobs:
+  deploy:
+    name: Deploy to Vercel
+    runs-on: ubuntu-latest
+    environment: production
+
+    defaults:
+      run:
+        working-directory: apps/architecture-village
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check Vercel secrets
+        run: |
+          missing=0
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "::error::Missing secret VERCEL_TOKEN"
+            missing=1
+          fi
+          if [ -z "$VERCEL_ORG_ID" ]; then
+            echo "::error::Missing secret VERCEL_ORG_ID"
+            missing=1
+          fi
+          if [ -z "$VERCEL_PROJECT_ID" ]; then
+            echo "::error::Missing secret VERCEL_PROJECT_ID_ARCHITECTURE_VILLAGE (do not reuse the blog project id)"
+            missing=1
+          fi
+          exit "$missing"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/architecture-village/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test
+        run: npm test
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel@54.14.0
+
+      - name: Pull Vercel environment
+        run: vercel pull --yes --environment=production
+
+      - name: Build
+        run: vercel build --prod
+
+      - name: Deploy
+        id: deploy
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.production }}" != "true" ]; then
+            url=$(vercel deploy --prebuilt --yes)
+          else
+            url=$(vercel deploy --prebuilt --prod --yes)
+          fi
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Deployed to $url" >> "$GITHUB_STEP_SUMMARY"
