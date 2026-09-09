@@ -1,4 +1,4 @@
-import type { ApiMiddleware, ApiExecutionContext } from './types.js';
+import type { ApiMiddleware, ApiExecutionContext } from './types';
 
 /**
  * Identity helper that constrains and infers middleware types.

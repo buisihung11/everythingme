@@ -1,6 +1,6 @@
-import { createMiddleware } from '../create-middleware.js';
-import { normalizeError } from '../errors.js';
-import type { ApiExecutionContext } from '../types.js';
+import { createMiddleware } from '../create-middleware';
+import { normalizeError } from '../errors';
+import type { ApiExecutionContext } from '../types';
 
 /**
  * Catches anything thrown by the downstream pipeline and wraps it in an

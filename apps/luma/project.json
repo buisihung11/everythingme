@@ -1,0 +1,51 @@
+{
+  "name": "luma",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/luma",
+  "projectType": "application",
+  "tags": ["scope:luma", "type:app", "category:mobile"],
+  "targets": {
+    "dev": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "expo start --go",
+        "cwd": "apps/luma"
+      }
+    },
+    "dev:tunnel": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "expo start --tunnel",
+        "cwd": "apps/luma"
+      }
+    },
+    "web": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "expo start --web",
+        "cwd": "apps/luma"
+      }
+    },
+    "ios": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "expo start --ios",
+        "cwd": "apps/luma"
+      }
+    },
+    "android": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "expo start --android",
+        "cwd": "apps/luma"
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "expo export",
+        "cwd": "apps/luma"
+      }
+    }
+  }
+}

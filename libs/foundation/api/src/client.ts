@@ -1,12 +1,12 @@
-import type { StandardSchemaV1 } from './standard-schema.js';
+import type { StandardSchemaV1 } from './standard-schema';
 import type {
   ApiMetadata,
   ApiMiddleware,
   ApiHandler,
   ApiExecutionContext,
-} from './types.js';
-import { composePipeline } from './pipeline.js';
-import { validate, validateOutput } from './middleware/validation.js';
+} from './types';
+import { composePipeline } from './pipeline';
+import { validate, validateOutput } from './middleware/validation';
 
 export interface ApiActionConfig<
   TContext extends ApiExecutionContext,

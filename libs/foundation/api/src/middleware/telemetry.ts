@@ -1,5 +1,5 @@
-import { createMiddleware } from '../create-middleware.js';
-import type { ApiExecutionContext } from '../types.js';
+import { createMiddleware } from '../create-middleware';
+import type { ApiExecutionContext } from '../types';
 
 /** OpenTelemetry-shaped span port — no OTel dependency. */
 export interface ApiSpan {

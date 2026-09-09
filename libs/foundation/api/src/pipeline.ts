@@ -3,7 +3,7 @@ import type {
   ApiMiddleware,
   ApiHandler,
   ApiExecutionContext,
-} from './types.js';
+} from './types';
 
 type Step<TInput, TOutput, TContext extends ApiExecutionContext> = (
   input: TInput,

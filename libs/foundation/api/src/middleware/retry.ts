@@ -1,6 +1,6 @@
-import { createMiddleware } from '../create-middleware.js';
-import { ApiValidationError } from '../errors.js';
-import type { ApiExecutionContext } from '../types.js';
+import { createMiddleware } from '../create-middleware';
+import { ApiValidationError } from '../errors';
+import type { ApiExecutionContext } from '../types';
 
 export interface RetryOptions {
   /** Maximum number of attempts (including the first). Default: 3. */
