@@ -1,4 +1,7 @@
-import type {LearningModule,Village} from './types';
+import type {Curriculum,LearningModule,Village} from './types';
+import type {LearningLab} from './learning-labs';
+import {learningLabs} from './learning-labs';
+import {englishLabs,englishModules,englishVillage} from './english-content';
 
 export type Locale='vi'|'en';
 export const LOCALE_KEY='hearth-locale-v1';
@@ -24,5 +27,25 @@ const villageMeta:Record<string,Partial<Village>>={
   signals:{title:'Signals Village',subtitle:'COMMUNICATION · DATA SHAPES',description:'Connect user-facing contracts to networks, APIs and the shape of stored data.'},
   scale:{title:'Scale Village',subtitle:'SCALE · CONSISTENCY · RESILIENCE',description:'Practice the decisions that keep a system useful as traffic, data and failures grow.'},
 };
-export function moduleView(m:LearningModule,locale:Locale):LearningModule{if(locale==='vi')return m;return {...m,...moduleMeta[m.id]};}
-export function villageView(v:Village,locale:Locale):Village{if(locale==='vi')return v;return {...v,...villageMeta[v.id]};}
+export function moduleView(m:LearningModule,locale:Locale):LearningModule{
+  if(locale==='vi')return m;
+  return {...m,...moduleMeta[m.id],...englishModules[m.id]};
+}
+export function villageView(v:Village,locale:Locale):Village{
+  if(locale==='vi')return v;
+  return {...englishVillage(v),...villageMeta[v.id]};
+}
+export function curriculumView(c:Curriculum,locale:Locale):Curriculum{
+  if(locale==='vi')return c;
+  return {version:c.version,villages:c.villages.map(v=>villageView(v,locale)),modules:c.modules.map(m=>moduleView(m,locale))};
+}
+export function labView(id:string,locale:Locale):LearningLab{return locale==='en'&&englishLabs[id]?englishLabs[id]:learningLabs[id];}
+
+export const uiText={
+  stages:(locale:Locale)=>locale==='en'
+    ? [['lesson','01','Lesson'],['lab','02','Lab'],['encounter','03','Encounter'],['quiz','04','Quiz'],['reflection','05','Reflection']]
+    : [['lesson','01','Bài học'],['lab','02','Thí nghiệm'],['encounter','03','Yêu quái'],['quiz','04','Quiz'],['reflection','05','Giải thích']],
+  rubric:(locale:Locale)=>locale==='en'
+    ? ['I stated my choice clearly','I tied the reason to a requirement','I explained the tradeoff','I named a failure mode','I gave an alternative']
+    : ['Tôi nêu lựa chọn rõ ràng','Tôi gắn lý do với requirement','Tôi giải thích tradeoff','Tôi nêu failure mode','Tôi đưa phương án thay thế'],
+};
