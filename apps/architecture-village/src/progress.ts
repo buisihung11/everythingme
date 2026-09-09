@@ -49,7 +49,7 @@ export function recordScore(p:ProgressV2,id:string,kind:'quiz'|'encounter'|'boss
     const m=p.modules[id];
     if(kind==='quiz'){m.quizBest=Math.max(m.quizBest,score);m.quizAttempts=Math.min(100000,m.quizAttempts+1);}
     else {m.encounterBest=Math.max(m.encounterBest,score);m.encounterAttempts=Math.min(100000,m.encounterAttempts+1);}
-    m.weakTags=[...new Set(weakTags)];
+    m.weakTags=[...new Set([...m.weakTags,...weakTags])].slice(-30);
   }
   p.updatedAt=new Date().toISOString();
 }

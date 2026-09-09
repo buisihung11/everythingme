@@ -26,15 +26,15 @@ export function mountModule(host:HTMLElement,m:LearningModule,state:ModuleProgre
       content.querySelector<HTMLInputElement>('#lab-value')!.oninput=e=>{value=Number((e.target as HTMLInputElement).value);interacted=true;update();};
       content.querySelector<HTMLButtonElement>('[data-lab-done]')!.onclick=()=>{if(interacted&&lab.run(value,mode).goal){state.lab=true;callbacks.save();step='encounter';draw();}};update();
     }else if(step==='encounter'){
-      disposeStep=mountEncounter(content,m.encounter,{update:callbacks.battle,complete:(score,tags)=>{callbacks.score('encounter',score,tags);},next:()=>{step='quiz';draw();}});
+      disposeStep=mountEncounter(content,m.encounter,{update:callbacks.battle,complete:(score,tags)=>{callbacks.score('encounter',score,tags);updateMastery();},next:()=>{step='quiz';draw();}});
     }else if(step==='quiz'){
-      disposeStep=mountQuiz(content,m.quiz,(score,tags)=>{callbacks.score('quiz',score,tags);});
+      disposeStep=mountQuiz(content,m.quiz,(score,tags)=>{callbacks.score('quiz',score,tags);updateMastery();});
       const next=document.createElement('button');next.className='secondary';next.textContent='Tiếp tục đến phần giải thích →';next.onclick=()=>{step='reflection';draw();};host.querySelector('.lesson-footer')!.before(next);
     }else{
       disposeStep=mountReflection(content,m.encounter.reflectionPrompt,state,()=>{callbacks.save();updateMastery();});
       const next=document.createElement('button');next.className='primary next-quest';next.dataset.nextQuest='';next.onclick=()=>callbacks.next();host.querySelector('.lesson-footer')!.before(next);updateMastery();
     }
   }
-  function updateMastery(){const badge=host.querySelector('.mastery-badge');if(badge)badge.textContent=mastered(state)?'✦ Mastered':'Foundation';const next=host.querySelector<HTMLButtonElement>('[data-next-quest]');if(next){const missing=[!state.lesson&&'bài học',!state.lab&&'lab',state.encounterBest<80&&'encounter ≥80%',state.quizBest<80&&'quiz ≥80%',!state.reflection&&'reflection'].filter(Boolean);next.disabled=!mastered(state);next.textContent=mastered(state)?'✦ Đến địa điểm tiếp theo →':`Còn: ${missing.join(', ')}`;}}
+  function updateMastery(){host.querySelectorAll<HTMLElement>('[data-step]').forEach(b=>{const stage=stages.find(s=>s[0]===b.dataset.step)!;b.querySelector('span')!.textContent=isDone(stage[0])?'✓':stage[1];});const badge=host.querySelector('.mastery-badge');if(badge)badge.textContent=mastered(state)?'✦ Mastered':'Foundation';const next=host.querySelector<HTMLButtonElement>('[data-next-quest]');if(next){const missing=[!state.lesson&&'bài học',!state.lab&&'lab',state.encounterBest<80&&'encounter ≥80%',state.quizBest<80&&'quiz ≥80%',!state.reflection&&'reflection'].filter(Boolean);next.disabled=!mastered(state);next.textContent=mastered(state)?'✦ Đến địa điểm tiếp theo →':`Còn: ${missing.join(', ')}`;}}
   draw();return()=>disposeStep();
 }

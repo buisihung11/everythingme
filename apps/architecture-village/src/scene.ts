@@ -451,7 +451,7 @@ export function createScene(
     function fitDistance() {
       const vertical = T.MathUtils.degToRad(camera.fov / 2);
       const horizontal = Math.atan(Math.tan(vertical) * camera.aspect);
-      return radius / Math.sin(Math.min(vertical, horizontal)) * 1.08;
+      return radius / Math.sin(Math.min(vertical, horizontal)) * .94;
     }
     function reset() {
       if (disposed) return;
