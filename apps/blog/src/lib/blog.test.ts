@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
+  blogPostSplatFromUrl,
   filterPageTreeForType,
+  getActivePersonalCategory,
   getBlogTypeFromPathname,
   getBlogTypeFromSlugs,
   getDefaultThumbnail,
@@ -112,5 +114,44 @@ describe('getDefaultThumbnail', () => {
     ['technical', 'other', '/thumbnails/technical-web.svg'],
   ] as const)('returns %s for %s/%s', (type, category, expected) => {
     expect(getDefaultThumbnail(type, category)).toBe(expected)
+  })
+})
+
+describe('getActivePersonalCategory', () => {
+  it('uses search category on personal list pages', () => {
+    expect(getActivePersonalCategory('/personal', 'travel')).toBe('travel')
+    expect(getActivePersonalCategory('/personal', undefined)).toBe('all')
+  })
+
+  it('derives category from blog article URLs', () => {
+    expect(
+      getActivePersonalCategory('/blog/personal/travel/a-week-in-hoi-an'),
+    ).toBe('travel')
+    expect(
+      getActivePersonalCategory('/blog/personal/thoughts/reflection'),
+    ).toBe('thoughts')
+  })
+
+  it('falls back to all for unknown paths or categories', () => {
+    expect(getActivePersonalCategory('/technical')).toBe('all')
+    expect(
+      getActivePersonalCategory('/blog/personal/unknown/post'),
+    ).toBe('all')
+    expect(getActivePersonalCategory('/blog/technical/web-development/post')).toBe(
+      'all',
+    )
+  })
+})
+
+describe('blogPostSplatFromUrl', () => {
+  it('strips the /blog/ prefix for splat routing', () => {
+    expect(blogPostSplatFromUrl('/blog/personal/travel/a-week-in-hoi-an')).toBe(
+      'personal/travel/a-week-in-hoi-an',
+    )
+  })
+
+  it('returns undefined for non-blog URLs', () => {
+    expect(blogPostSplatFromUrl('/personal/travel/post')).toBeUndefined()
+    expect(blogPostSplatFromUrl('')).toBeUndefined()
   })
 })
