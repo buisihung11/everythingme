@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router'
 import type { PostMeta } from '#/lib/blog-posts'
 import {
   BLOG_POST_OPEN_TRANSITION,
+  blogPostSplatFromUrl,
   getPostTransitionNames,
 } from '#/lib/view-transitions'
 
@@ -23,10 +24,6 @@ function formatCategory(slug: string) {
     .split('-')
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(' ')
-}
-
-function getPostSplat(url: string) {
-  return url.startsWith('/blog/') ? url.replace('/blog/', '') : undefined
 }
 
 export function PostCard({ post, variant }: PostCardProps) {
@@ -77,7 +74,7 @@ function PersonalPostCard({ post }: { post: PostMeta }) {
   return (
     <Link
       to="/blog/$"
-      params={{ _splat: getPostSplat(post.url) }}
+      params={{ _splat: blogPostSplatFromUrl(post.url) }}
       className="group block no-underline"
       viewTransition={{ types: [BLOG_POST_OPEN_TRANSITION] }}
     >
@@ -151,7 +148,7 @@ function TechnicalPostCard({ post }: { post: PostMeta }) {
   return (
     <Link
       to="/blog/$"
-      params={{ _splat: getPostSplat(post.url) }}
+      params={{ _splat: blogPostSplatFromUrl(post.url) }}
       className="group block no-underline"
       viewTransition={{ types: [BLOG_POST_OPEN_TRANSITION] }}
     >

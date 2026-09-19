@@ -52,3 +52,7 @@ export function getPostTransitionNames(url: string) {
 export function postUrlFromPath(path: string) {
   return `/blog/${path.replace(/^\//, '')}`
 }
+
+export function blogPostSplatFromUrl(url: string): string | undefined {
+  return url.startsWith('/blog/') ? url.slice('/blog/'.length) : undefined
+}
