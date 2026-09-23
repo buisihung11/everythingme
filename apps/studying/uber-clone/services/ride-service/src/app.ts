@@ -24,9 +24,9 @@ import {
 const MATCHING_URL =
   process.env.MATCHING_URL ?? 'http://localhost:4402';
 
-/** Offer-window lock TTL (seconds). Covers 15s SFN timeout + safety buffer. */
-const OFFER_LOCK_TTL = 30;
-/** Matched-ride lock TTL (seconds). Extended on accept; no "complete ride" in this lab. */
+/** Offer-window lock TTL (seconds). Covers 65s SFN timeout + safety buffer. */
+const OFFER_LOCK_TTL = 90;
+/** Matched-ride lock TTL (seconds). Released when the rider completes the trip. */
 const MATCHED_LOCK_TTL = 3600;
 
 /**
@@ -165,6 +165,36 @@ rideApp.get('/rides/:id/offers', async (c) => {
     orderBy: (t, { asc }) => [asc(t.offerIndex)],
   });
   return c.json({ offers: offers.map(serializeOffer) });
+});
+
+// POST /rides/:id/complete
+// Ends a MATCHED trip: release the driver lock and mark the driver available.
+rideApp.post('/rides/:id/complete', async (c) => {
+  const { id: rideId } = c.req.param();
+  const ride = await db.query.rides.findFirst({ where: eq(schema.rides.id, rideId) });
+  if (!ride) return c.json({ error: 'not found' }, 404);
+
+  if (ride.status === 'COMPLETED') {
+    return c.json({ ride: serializeRide(ride) });
+  }
+  if (ride.status !== 'MATCHED' || !ride.driverId) {
+    return c.json({ error: 'ride is not matched' }, 409);
+  }
+
+  const driverId = ride.driverId;
+  await releaseDriverLock(driverId, rideId);
+  await setDriverStatus(driverId, 'available');
+
+  await db
+    .update(schema.rides)
+    .set({ status: 'COMPLETED', updatedAt: new Date() })
+    .where(eq(schema.rides.id, rideId));
+
+  publish({ type: 'lock.released', rideId, driverId });
+  publish({ type: 'ride.completed', rideId, driverId });
+
+  const updated = await db.query.rides.findFirst({ where: eq(schema.rides.id, rideId) });
+  return c.json({ ride: serializeRide(updated!) });
 });
 
 // POST /rides/:id/offers/:driverId/respond
@@ -341,8 +371,7 @@ internal.post(
     const { id: rideId } = c.req.param();
     const { driverId } = c.req.valid('json');
 
-    // Extend the offer-window lock to 1 h so the driver stays exclusively
-    // assigned for the duration of the ride (no "complete ride" in this lab).
+    // Extend the offer-window lock to 1 h until Complete ride releases it.
     await extendDriverLock(driverId, rideId, MATCHED_LOCK_TTL);
 
     await db

@@ -76,8 +76,7 @@ export const WORKFLOW_STATE_META: Record<WorkflowStateName, WorkflowStateMeta> =
         { when: 'Timeout, decline, or DriverLocked', to: 'AdvanceCursor' },
       ],
       details: [
-        'TimeoutSeconds 15',
-        'HeartbeatSeconds 60',
+        'TimeoutSeconds 65',
         'Catch States.Timeout, DriverDeclined, DriverLocked',
         'ResultPath $.offerResult',
       ],

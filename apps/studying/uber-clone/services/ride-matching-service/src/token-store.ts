@@ -1,7 +1,7 @@
 /**
  * token-store.ts
  * Redis-backed store for Step Functions activity task tokens.
- * Key: offer:{rideId}:{driverId}  TTL: 60s (just above the 10s offer timeout)
+ * Key: offer:{rideId}:{driverId}  TTL: 90s (above the 65s SFN offer timeout)
  */
 
 import { Redis } from 'ioredis';
@@ -11,7 +11,7 @@ const redis = new Redis({
   port: parseInt(process.env.REDIS_PORT ?? '6380', 10),
 });
 
-const TTL_SECONDS = 60;
+const TTL_SECONDS = 90;
 
 function tokenKey(rideId: string, driverId: string): string {
   return `offer:${rideId}:${driverId}`;

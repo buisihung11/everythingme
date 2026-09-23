@@ -25,6 +25,7 @@ export const RideStatusSchema = z.enum([
   'REQUESTED',
   'MATCHING',
   'MATCHED',
+  'COMPLETED',
   'NO_DRIVERS',
   'CANCELLED',
 ]);
@@ -101,6 +102,7 @@ export const DomainEventTypeSchema = z.enum([
   'offer.declined',
   'offer.timeout',
   'ride.matched',
+  'ride.completed',
   'ride.no_drivers',
   'lock.acquired',
   'lock.denied',
@@ -141,6 +143,11 @@ export const DomainEventSchema = z.discriminatedUnion('type', [
   }),
   z.object({
     type: z.literal('ride.matched'),
+    rideId: z.string(),
+    driverId: z.string(),
+  }),
+  z.object({
+    type: z.literal('ride.completed'),
     rideId: z.string(),
     driverId: z.string(),
   }),

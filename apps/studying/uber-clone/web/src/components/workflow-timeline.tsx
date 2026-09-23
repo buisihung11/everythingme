@@ -119,7 +119,7 @@ function EventList({ events }: { events: HistoryEvent[] }) {
   }
 
   return (
-    <ScrollArea className="h-[280px] pr-3">
+    <ScrollArea className="h-full min-h-0 pr-3">
       <div className="space-y-2">
         {events.map((e) => {
           const stateName =
@@ -177,8 +177,8 @@ export function WorkflowTimeline({
   ).length;
 
   return (
-    <Card className="min-w-0 gap-5 shadow-none">
-      <CardHeader className="px-5 sm:px-6">
+    <Card className="h-full min-h-0 gap-3 overflow-hidden py-4 shadow-none">
+      <CardHeader className="shrink-0 px-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <StepTitle step={3}>Observe the workflow</StepTitle>
@@ -220,7 +220,7 @@ export function WorkflowTimeline({
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-4 px-5 sm:px-6">
+      <CardContent className="flex min-h-0 flex-1 flex-col space-y-3 overflow-hidden px-5">
         {!rideId && (
           <Empty className="border bg-muted/30 py-6">
             <EmptyHeader>
@@ -247,15 +247,15 @@ export function WorkflowTimeline({
             </AlertDescription>
           </Alert>
         )}
-        <Tabs defaultValue="graph" className="min-w-0">
-          <TabsList className="grid h-10 w-full grid-cols-2 sm:w-72">
+        <Tabs defaultValue="graph" className="flex min-h-0 flex-1 flex-col">
+          <TabsList className="grid h-10 w-full shrink-0 grid-cols-2 sm:w-72">
             <TabsTrigger value="graph">State graph</TabsTrigger>
             <TabsTrigger value="events">Execution history</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="graph" className="mt-3 space-y-2">
+          <TabsContent value="graph" className="mt-3 flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
             <WorkflowGraph runtime={runtime} />
-            <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground">
+            <div className="flex shrink-0 flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground">
               <LegendItem swatch="h-2 w-2 rounded-full bg-blue-600">Active state</LegendItem>
               <LegendItem swatch="h-2 w-2 rounded-full bg-green-600">Completed</LegendItem>
               <LegendItem swatch="h-0.5 w-3 bg-amber-500">Timeout or decline path</LegendItem>
@@ -263,7 +263,7 @@ export function WorkflowTimeline({
             </div>
           </TabsContent>
 
-          <TabsContent value="events" className="mt-3">
+          <TabsContent value="events" className="mt-3 min-h-0 flex-1 overflow-hidden">
             <EventList events={events} />
           </TabsContent>
         </Tabs>

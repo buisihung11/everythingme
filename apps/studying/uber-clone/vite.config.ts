@@ -52,6 +52,8 @@ export default defineConfig({
       '@radix-ui/react-separator',
       '@radix-ui/react-tabs',
       '@radix-ui/react-slot',
+      'leaflet',
+      'react-leaflet',
     ],
   },
 });

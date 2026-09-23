@@ -16,23 +16,25 @@
     "smoke": "tsx scripts/smoke.ts"
   },
   "dependencies": {
-    "@everythingme/ui": "workspace:*",
     "@aws-sdk/client-sfn": "^3.800.0",
-    "@xyflow/react": "^12.8.2",
+    "@everythingme/ui": "workspace:*",
     "@hono/node-server": "^1.13.8",
     "@hono/zod-validator": "^0.4.3",
+    "@xyflow/react": "^12.8.2",
     "concurrently": "^9.1.2",
     "drizzle-orm": "^0.44.5",
     "hono": "^4.7.10",
     "ioredis": "^5.6.1",
+    "leaflet": "^1.9.4",
     "postgres": "^3.4.7",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-leaflet": "^5.0.0",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.18",
-    "tailwindcss": "^4.1.18",
+    "@types/leaflet": "^1.9.22",
     "@types/node": "^20.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
@@ -40,6 +42,7 @@
     "aws-cdk-lib": "^2.200.0",
     "constructs": "^10.4.2",
     "drizzle-kit": "^0.31.4",
+    "tailwindcss": "^4.1.18",
     "tsx": "^4.19.2",
     "typescript": "catalog:",
     "vite": "^8.0.0"
