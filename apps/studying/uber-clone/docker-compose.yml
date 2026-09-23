@@ -1,0 +1,23 @@
+services:
+  stepfunctions-local:
+    image: amazon/aws-stepfunctions-local:2.0.0
+    container_name: uber-clone-sfn-local
+    restart: unless-stopped
+    ports:
+      - '8083:8083'
+    environment:
+      WAIT_TIME_SCALE: 1
+      LAMBDA_ENDPOINT: ''
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: local
+      AWS_SECRET_ACCESS_KEY: local
+
+  redis:
+    image: redis:7-alpine
+    container_name: uber-clone-redis
+    restart: unless-stopped
+    ports:
+      - '6380:6379'
+    command: redis-server --save "" --appendonly no
+
+volumes: {}
