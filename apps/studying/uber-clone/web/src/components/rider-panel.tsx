@@ -11,33 +11,18 @@ import {
   cn,
 } from '@everythingme/ui';
 import { RIDE_URL, postJson } from '../lib/api';
+import { ROUTE_PRESETS, type RoutePreset } from '../lib/route-presets';
 import { StepTitle } from './step-title';
 import { StepDelayControl } from './step-delay-control';
-
-const PRESETS = [
-  {
-    label: 'Tenderloin → Mission',
-    pickup: { lat: 37.7845, lng: -122.4144, address: 'Tenderloin, SF' },
-    dropoff: { lat: 37.7599, lng: -122.4148, address: 'Mission District, SF' },
-  },
-  {
-    label: 'SoMa → Castro',
-    pickup: { lat: 37.7785, lng: -122.4056, address: 'SoMa, SF' },
-    dropoff: { lat: 37.7609, lng: -122.435, address: 'Castro, SF' },
-  },
-  {
-    label: 'Marina → Chinatown',
-    pickup: { lat: 37.8007, lng: -122.437, address: 'Marina, SF' },
-    dropoff: { lat: 37.7949, lng: -122.4069, address: 'Chinatown, SF' },
-  },
-];
 
 interface Props {
   /**
    * Called after one or more rides are created.
    * A single "Request ride" returns [id]; "Race 2 rides" returns [id1, id2].
    */
-  onRidesCreated: (ids: string[]) => void;
+  onRidesCreated: (ids: string[], route: RoutePreset) => void;
+  /** Keeps the booking map in sync with the selected preset. */
+  onRouteChange: (route: RoutePreset) => void;
 }
 
 function RoutePoint({
@@ -62,16 +47,29 @@ function RoutePoint({
   );
 }
 
-export function RiderPanel({ onRidesCreated }: Props) {
+function newRiderId(): string {
+  return `rider-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+async function createRide(riderId: string, route: RoutePreset): Promise<string> {
+  const data = await postJson<{ ride: { id: string } }>(`${RIDE_URL}/rides`, {
+    riderId,
+    pickup: route.pickup,
+    dropoff: route.dropoff,
+  });
+  return data.ride.id;
+}
+
+export function RiderPanel({ onRidesCreated, onRouteChange }: Props) {
   const [presetIndex, setPresetIndex] = useState(0);
   const [fareEstimate, setFareEstimate] = useState<number | null>(null);
   const [pendingAction, setPendingAction] = useState<'estimate' | 'request' | 'race' | null>(
     null,
   );
   const [error, setError] = useState<string | null>(null);
-  const [riderId] = useState(() => `rider-${Math.random().toString(36).slice(2, 8)}`);
+  const [riderId] = useState(newRiderId);
 
-  const preset = PRESETS[presetIndex];
+  const preset = ROUTE_PRESETS[presetIndex] ?? ROUTE_PRESETS[0];
 
   const handleEstimate = useCallback(async () => {
     setPendingAction('estimate');
@@ -93,12 +91,8 @@ export function RiderPanel({ onRidesCreated }: Props) {
     setPendingAction('request');
     setError(null);
     try {
-      const data = await postJson<{ ride: { id: string } }>(`${RIDE_URL}/rides`, {
-        riderId,
-        pickup: preset.pickup,
-        dropoff: preset.dropoff,
-      });
-      onRidesCreated([data.ride.id]);
+      const rideId = await createRide(riderId, preset);
+      onRidesCreated([rideId], preset);
     } catch {
       setError('Could not start the workflow. Check that the local services are running.');
     } finally {
@@ -115,20 +109,11 @@ export function RiderPanel({ onRidesCreated }: Props) {
     setPendingAction('race');
     setError(null);
     try {
-      const riderIdB = `rider-${Math.random().toString(36).slice(2, 8)}`;
-      const [resA, resB] = await Promise.all([
-        postJson<{ ride: { id: string } }>(`${RIDE_URL}/rides`, {
-          riderId,
-          pickup: preset.pickup,
-          dropoff: preset.dropoff,
-        }),
-        postJson<{ ride: { id: string } }>(`${RIDE_URL}/rides`, {
-          riderId: riderIdB,
-          pickup: preset.pickup,
-          dropoff: preset.dropoff,
-        }),
+      const rideIds = await Promise.all([
+        createRide(riderId, preset),
+        createRide(newRiderId(), preset),
       ]);
-      onRidesCreated([resA.ride.id, resB.ride.id]);
+      onRidesCreated(rideIds, preset);
     } catch {
       setError('Could not start the race. Check that the local services are running.');
     } finally {
@@ -137,28 +122,32 @@ export function RiderPanel({ onRidesCreated }: Props) {
   }, [preset, riderId, onRidesCreated]);
 
   return (
-    <Card className="min-w-0 gap-5 shadow-none">
-      <CardHeader className="px-5">
+    <Card className="h-full min-h-0 gap-3 py-4 shadow-none">
+      <CardHeader className="shrink-0 px-4">
         <StepTitle step={1}>Configure a ride</StepTitle>
         <CardDescription>
-          Choose a route, then start the matching workflow.
+          Choose a route, then start matching.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-5 px-5">
+      <CardContent className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4">
         <div className="space-y-2">
           <Label htmlFor="route-preset">Route preset</Label>
           <select
             id="route-preset"
-            className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             value={presetIndex}
             onChange={(e) => {
-              setPresetIndex(Number(e.target.value));
+              const index = Number(e.target.value);
+              const next = ROUTE_PRESETS[index];
+              if (!next) return;
+              setPresetIndex(index);
+              onRouteChange(next);
               setFareEstimate(null);
               setError(null);
             }}
             disabled={pendingAction !== null}
           >
-            {PRESETS.map((p, i) => (
+            {ROUTE_PRESETS.map((p, i) => (
               <option key={p.label} value={i}>
                 {p.label}
               </option>
@@ -166,7 +155,7 @@ export function RiderPanel({ onRidesCreated }: Props) {
           </select>
         </div>
 
-        <div className="relative space-y-4 rounded-lg border bg-muted/30 p-3.5 text-sm">
+        <div className="relative space-y-3 rounded-lg border bg-muted/30 p-3 text-sm">
           <div className="absolute bottom-8 left-[1.12rem] top-8 w-px bg-border" aria-hidden />
           <RoutePoint
             label="Pickup"
@@ -183,7 +172,7 @@ export function RiderPanel({ onRidesCreated }: Props) {
         <div className="grid grid-cols-[1fr_auto] gap-2">
           <Button
             variant="outline"
-            className="h-11"
+            className="h-9 whitespace-nowrap"
             onClick={handleEstimate}
             disabled={pendingAction !== null}
           >
@@ -197,7 +186,7 @@ export function RiderPanel({ onRidesCreated }: Props) {
         <StepDelayControl />
 
         <Button
-          className="h-11 w-full"
+          className="h-9 w-full"
           onClick={handleRequestRide}
           disabled={pendingAction !== null}
         >
@@ -207,7 +196,7 @@ export function RiderPanel({ onRidesCreated }: Props) {
         {/* Race demo: fire two rides simultaneously against the same drivers */}
         <Button
           variant="outline"
-          className="h-11 w-full border-amber-400 bg-amber-50 text-amber-900 hover:bg-amber-100 dark:border-amber-600 dark:bg-amber-950/40 dark:text-amber-200 dark:hover:bg-amber-950/60"
+          className="h-9 w-full border-amber-400 bg-amber-50 text-amber-900 hover:bg-amber-100 dark:border-amber-600 dark:bg-amber-950/40 dark:text-amber-200 dark:hover:bg-amber-950/60"
           onClick={handleRaceRides}
           disabled={pendingAction !== null}
           title="Fires two concurrent POST /rides so both Step Functions compete for the same drivers. Demonstrates the Redis SET NX lock."

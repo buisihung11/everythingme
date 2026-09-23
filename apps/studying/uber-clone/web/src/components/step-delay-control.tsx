@@ -70,12 +70,12 @@ export function StepDelayControl() {
   }, []);
 
   return (
-    <div className="space-y-3 rounded-lg border bg-muted/30 p-3.5">
+    <div className="space-y-2 rounded-lg border bg-muted/30 p-3">
       <div className="flex items-center justify-between gap-3">
         <div>
           <Label htmlFor="step-delay">Step delay</Label>
           <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
-            Pause before each activity so the graph is easier to follow.
+            Pause between workflow steps.
           </p>
         </div>
         <Badge variant="outline" className="shrink-0 font-mono font-medium">

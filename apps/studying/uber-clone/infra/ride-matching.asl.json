@@ -1,5 +1,5 @@
 {
-  "Comment": "Uber Clone ride-matching workflow. Offers a ride to drivers one at a time with a 10-second timeout. Advances to the next driver on decline or timeout.",
+  "Comment": "Uber Clone ride-matching workflow. Offers a ride to drivers one at a time with a 60-second timeout. Advances to the next driver on decline or timeout.",
   "StartAt": "FetchCandidates",
   "States": {
     "FetchCandidates": {
@@ -50,9 +50,8 @@
     "OfferToDriver": {
       "Type": "Task",
       "Resource": "arn:aws:states:us-east-1:123456789012:activity:offer-driver",
-      "Comment": "Worker stores task token in Redis and upserts offer in Ride Service. Driver accept/decline completes the task. Timeout includes study step delay headroom (up to 5s) plus a 10s driver response window.",
-      "TimeoutSeconds": 15,
-      "HeartbeatSeconds": 60,
+      "Comment": "Worker stores task token in Redis and upserts offer in Ride Service. Driver accept/decline completes the task. Timeout includes study step delay headroom (up to 5s) plus a 60s driver response window.",
+      "TimeoutSeconds": 65,
       "ResultPath": "$.offerResult",
       "Catch": [
         {

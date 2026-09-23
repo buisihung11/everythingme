@@ -11,6 +11,7 @@ import {
   CreateStateMachineCommand,
   ListActivitiesCommand,
   ListStateMachinesCommand,
+  UpdateStateMachineCommand,
 } from '@aws-sdk/client-sfn';
 import { readFile, writeFile } from 'fs/promises';
 import { resolve } from 'path';
@@ -113,7 +114,13 @@ async function main() {
 
   if (existingSMs.has(STATE_MACHINE_NAME)) {
     stateMachineArn = existingSMs.get(STATE_MACHINE_NAME)!;
-    console.log(`  ✓ State machine already exists: ${STATE_MACHINE_NAME}`);
+    await sfn.send(
+      new UpdateStateMachineCommand({
+        stateMachineArn,
+        definition: JSON.stringify(asl),
+      }),
+    );
+    console.log(`  ↻ Updated state machine: ${STATE_MACHINE_NAME}`);
   } else {
     const res = await sfn.send(
       new CreateStateMachineCommand({

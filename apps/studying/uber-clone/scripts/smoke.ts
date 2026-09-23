@@ -7,7 +7,7 @@
  *   tsx scripts/smoke.ts
  *
  * Tests:
- *   1. accept path  — first driver accepts
+ *   1. accept path  — first driver accepts, then complete ride
  *   2. decline path — two drivers decline, third accepts
  *   3. no-driver path — all drivers set to decline
  *   4. late accept   — try to accept after token expired / after SFN moved on
@@ -143,6 +143,31 @@ async function testAcceptPath() {
 
   const final = await getRide(ride.id);
   assert(final.driverId === offeredDriver, `ride.driverId = ${offeredDriver}`);
+
+  const completeRes = await fetch(`${RIDE_URL}/rides/${ride.id}/complete`, {
+    method: 'POST',
+  });
+  assert(completeRes.status === 200, `complete ride returns 200 (got ${completeRes.status})`);
+  const completed = await getRide(ride.id);
+  assert(completed.status === 'COMPLETED', `ride status is COMPLETED (got ${completed.status})`);
+
+  const driversRes = await fetch(`${LOCATION_URL}/drivers`);
+  const driversData = (await driversRes.json()) as {
+    drivers: Array<{ id: string; status: string }>;
+  };
+  const freed = driversData.drivers.find((d) => d.id === offeredDriver);
+  assert(freed?.status === 'available', 'matched driver is available after complete');
+
+  const locksRes = await fetch(`${LOCATION_URL}/locks`);
+  if (locksRes.ok) {
+    const locksData = (await locksRes.json()) as {
+      locks: Array<{ driverId: string }>;
+    };
+    assert(
+      !locksData.locks.some((lock) => lock.driverId === offeredDriver),
+      'matched driver lock is released after complete',
+    );
+  }
 }
 
 // ── Test 2: Decline path ────────────────────────────────────────────────────────
@@ -232,9 +257,9 @@ async function testLateAccept() {
     return;
   }
 
-  // Wait >10s for the offer to time out
-  console.log(`  Waiting 12s for offer to time out…`);
-  await sleep(12000);
+  // Wait past the 65s SFN offer timeout
+  console.log(`  Waiting 70s for offer to time out…`);
+  await sleep(70000);
 
   const status = await respond(ride.id, driver, true);
   assert(

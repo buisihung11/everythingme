@@ -25,6 +25,7 @@ const EVENT_VARIANTS: Partial<Record<AnyEvent['type'], BadgeVariant>> = {
   'offer.declined': 'destructive',
   'offer.timeout': 'destructive',
   'ride.matched': 'default',
+  'ride.completed': 'secondary',
   'ride.no_drivers': 'destructive',
   // lock events
   'lock.acquired': 'default',
@@ -48,6 +49,8 @@ function formatEvent(e: AnyEvent): string {
       return `${e.driverId} timed out`;
     case 'ride.matched':
       return `Matched with ${e.driverId}`;
+    case 'ride.completed':
+      return `Trip complete — ${e.driverId} is free`;
     case 'ride.no_drivers':
       return 'No drivers available';
     // lock events
@@ -71,39 +74,42 @@ function getRideId(e: AnyEvent): string | undefined {
 }
 
 export function EventLog({ events }: Props) {
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (events.length === 0) return;
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const viewport = listRef.current?.closest<HTMLElement>(
+      '[data-slot="scroll-area-viewport"]',
+    );
+    if (!viewport) return;
+    viewport.scrollTop = viewport.scrollHeight;
   }, [events.length]);
 
   return (
-    <Card className="min-w-0 gap-4 shadow-none">
-      <CardHeader className="px-5 sm:px-6">
-        <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+    <Card className="h-full min-h-0 gap-3 py-4 shadow-none">
+      <CardHeader className="shrink-0 px-5">
+        <div className="flex items-end justify-between gap-3">
           <div>
             <CardTitle className="text-base">Domain event stream</CardTitle>
             <CardDescription className="mt-1">
               Business events published by the Ride Service over SSE.
             </CardDescription>
           </div>
-          <Badge variant="outline" className="mt-2 w-fit font-normal sm:mt-0">
+          <Badge variant="outline" className="w-fit font-normal">
             {events.length} event{events.length !== 1 ? 's' : ''}
           </Badge>
         </div>
       </CardHeader>
-      <CardContent className="px-5 sm:px-6">
-        <ScrollArea className="h-44 rounded-lg border bg-muted/20">
+      <CardContent className="min-h-0 flex-1 px-5">
+        <ScrollArea className="h-full rounded-lg border bg-muted/20">
           {events.length === 0 ? (
-            <div className="flex h-44 flex-col items-center justify-center px-4 text-center">
+            <div className="flex h-full min-h-40 flex-col items-center justify-center px-4 text-center">
               <p className="text-sm font-medium">No domain events yet</p>
               <p className="mt-1 text-xs text-muted-foreground">
                 Request a ride to populate the live stream.
               </p>
             </div>
           ) : (
-            <div className="divide-y">
+            <div ref={listRef} className="divide-y">
               {events.map((e, i) => {
                 const rideId = getRideId(e);
                 return (
@@ -130,7 +136,6 @@ export function EventLog({ events }: Props) {
               })}
             </div>
           )}
-          <div ref={bottomRef} />
         </ScrollArea>
       </CardContent>
     </Card>

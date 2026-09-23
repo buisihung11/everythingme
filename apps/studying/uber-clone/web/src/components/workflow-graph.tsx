@@ -163,8 +163,8 @@ export function WorkflowGraph({ runtime }: Props) {
   const selectedMeta = selectedId ? WORKFLOW_STATE_META[selectedId] : null;
 
   return (
-    <div className="space-y-2">
-      <div className="h-[400px] w-full min-w-0 overflow-hidden rounded-lg border bg-muted/20 sm:h-[440px]">
+    <div className="flex min-h-0 flex-1 flex-col gap-2">
+      <div className="min-h-0 w-full flex-1 overflow-hidden rounded-lg border bg-muted/20">
         <ReactFlow
           nodes={nodes}
           edges={edges}

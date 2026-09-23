@@ -6,7 +6,7 @@
  * The token is held until:
  *   - Driver accepts  → SendTaskSuccess via /matches/:rideId/offers/:driverId/respond
  *   - Driver declines → SendTaskFailure(DriverDeclined) via respond endpoint
- *   - 10s timeout    → SFN Local fires States.Timeout, caught by AdvanceCursor
+ *   - 60s timeout    → SFN Local fires States.Timeout, caught by AdvanceCursor
  *
  * Lock-deny path (new):
  *   - Ride Service returns 409 because another ride holds the driver lock.
@@ -74,7 +74,7 @@ async function handler(input: Input, taskToken: string): Promise<undefined> {
       console.error(
         `[offer-driver] ride service returned ${res.status} for ride=${rideId} driver=${currentDriverId}`,
       );
-      // Non-409 failure: fall through to save token; the 15s SFN timeout will
+      // Non-409 failure: fall through to save token; the 65s SFN timeout will
       // still advance the cursor if the driver never responds.
     }
   } catch (err) {

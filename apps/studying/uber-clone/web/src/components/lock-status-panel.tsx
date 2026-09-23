@@ -20,7 +20,11 @@ import {
 import type { DriverInfo } from '../hooks/use-drivers';
 import type { AnyEvent, LockInfo, LockDeniedEvent } from '../lib/lock-types';
 import { resolveDriverLocks } from '../lib/lock-types';
+import { rideLaneTitle } from '../lib/booking-map-state';
 import { StepTitle } from './step-title';
+
+/** Offer locks last 90s; matched locks last 3600s. */
+const MATCHED_TTL_SECONDS = 120;
 
 interface RecentDeny {
   /** The ride that was denied the lock. */
@@ -35,10 +39,55 @@ interface Props {
   drivers: DriverInfo[];
   locks: LockInfo[];
   sseEvents: AnyEvent[];
+  rideIds?: string[];
   error?: boolean;
 }
 
-export function LockStatusPanel({ drivers, locks, sseEvents, error }: Props) {
+function formatRide(rideIds: string[], rideId: string): string {
+  const lane = rideLaneTitle(rideIds, rideId);
+  return lane?.startsWith('Ride ') ? lane : `ride ${rideId.slice(0, 8)}`;
+}
+
+function describeLock(
+  driverId: string,
+  lock: LockInfo,
+  events: AnyEvent[],
+  rideIds: string[],
+): string {
+  const holder = formatRide(rideIds, lock.rideId);
+  let offered = false;
+  let accepted = false;
+  let matched = false;
+
+  for (const event of events) {
+    if (!('driverId' in event) || event.driverId !== driverId) continue;
+    if (event.rideId !== lock.rideId) continue;
+    if (event.type === 'offer.created') offered = true;
+    if (event.type === 'offer.accepted') accepted = true;
+    if (event.type === 'ride.matched') matched = true;
+  }
+
+  const longLived = lock.ttlSeconds != null && lock.ttlSeconds > MATCHED_TTL_SECONDS;
+
+  if (matched || accepted || longLived) {
+    return `Accepted ${holder}. Lock extended to 1 hour after match. Complete the ride on this driver's card to release it.`;
+  }
+  if (offered) {
+    return `Offered ${holder}. Exclusive Redis lock for the 60s accept window.`;
+  }
+  if (lock.ttlSeconds != null && lock.ttlSeconds <= MATCHED_TTL_SECONDS) {
+    return `Held by ${holder} while an offer is in flight.`;
+  }
+  return `Exclusive Redis lock held by ${holder}.`;
+}
+
+export function LockStatusPanel({
+  drivers,
+  locks,
+  sseEvents,
+  rideIds = [],
+  error,
+}: Props) {
   /** Per-driver recent deny info, cleared after 8 seconds. */
   const [recentDenies, setRecentDenies] = useState<Record<string, RecentDeny>>({});
 
@@ -54,11 +103,9 @@ export function LockStatusPanel({ drivers, locks, sseEvents, error }: Props) {
       [denied.driverId]: { rideId: denied.rideId, heldBy: denied.heldBy, at },
     }));
 
-    // Fade out the deny highlight after 8 seconds
     const timerId = setTimeout(() => {
       setRecentDenies((prev) => {
         const entry = prev[denied.driverId];
-        // Only remove if it's still the same event we recorded
         if (!entry || entry.at !== at) return prev;
         const next = { ...prev };
         delete next[denied.driverId];
@@ -73,30 +120,31 @@ export function LockStatusPanel({ drivers, locks, sseEvents, error }: Props) {
   const activeCount = Object.keys(lockByDriver).length;
 
   return (
-    <Card className="min-w-0 gap-5 shadow-none">
-      <CardHeader className="px-5">
+    <Card className="h-full min-h-0 gap-3 overflow-hidden py-4 shadow-none">
+      <CardHeader className="shrink-0 px-5">
         <StepTitle step={3}>Lock status</StepTitle>
         <CardDescription>
           {error
             ? 'GET /locks is unavailable. Restart the Location Service (pnpm dev) so lock APIs load.'
             : activeCount === 0
               ? 'No active Redis locks. Race 2 rides to see them compete.'
-              : `${activeCount} active lock${activeCount !== 1 ? 's' : ''}. Held = ride that claimed this driver.`}
+              : `${activeCount} active lock${activeCount !== 1 ? 's' : ''}. Why = how this driver was claimed.`}
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-2 px-5">
+      <CardContent className="min-h-0 flex-1 space-y-2 overflow-y-auto px-5">
         {drivers.length === 0 ? (
           <p className="text-xs text-muted-foreground">No drivers registered.</p>
         ) : (
           drivers.map((d) => {
             const lock = lockByDriver[d.id];
             const deny = recentDenies[d.id];
+            const holder = lock ? formatRide(rideIds, lock.rideId) : null;
 
             return (
               <div
                 key={d.id}
                 className={cn(
-                  'flex items-start justify-between gap-2 rounded-md border px-3 py-2.5 text-xs transition-colors duration-300',
+                  'flex items-start justify-between gap-3 rounded-md border px-3 py-2.5 text-xs transition-colors duration-300',
                   deny
                     ? 'border-destructive/40 bg-destructive/5'
                     : lock
@@ -104,11 +152,18 @@ export function LockStatusPanel({ drivers, locks, sseEvents, error }: Props) {
                       : 'bg-muted/20',
                 )}
               >
-                <div className="min-w-0 space-y-0.5">
+                <div className="min-w-0 space-y-1">
                   <p className="truncate font-medium">{d.name}</p>
+                  {lock && (
+                    <p className="leading-5 text-muted-foreground">
+                      {describeLock(d.id, lock, sseEvents, rideIds)}
+                    </p>
+                  )}
                   {deny && (
-                    <p className="truncate text-destructive">
-                      ✗ ride {deny.rideId.slice(0, 8)} denied — held by {deny.heldBy.slice(0, 8)}
+                    <p className="leading-5 text-destructive">
+                      {formatRide(rideIds, deny.rideId)} tried to lock this
+                      driver and was denied — already held by{' '}
+                      {formatRide(rideIds, deny.heldBy)}.
                     </p>
                   )}
                 </div>
@@ -118,8 +173,9 @@ export function LockStatusPanel({ drivers, locks, sseEvents, error }: Props) {
                     <Badge
                       variant="outline"
                       className="font-mono text-[10px] font-normal text-amber-700 border-amber-400"
+                      title={lock.rideId}
                     >
-                      {lock.rideId.slice(0, 8)}
+                      {holder}
                       {lock.ttlSeconds != null ? ` · ${lock.ttlSeconds}s` : ''}
                     </Badge>
                   ) : (

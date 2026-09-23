@@ -1,6 +1,6 @@
 # Uber Clone — AWS Step Functions Study Project
 
-A local-first study project showing how AWS Step Functions Activities work, using a ride-matching scenario (simplified Uber). Watch the state machine offer rides to drivers one at a time, timeout after 10s, and catch declines — all running locally.
+A local-first study project showing how AWS Step Functions Activities work, using a ride-matching scenario (simplified Uber). Watch the state machine offer rides to drivers one at a time, timeout after 60s, and catch declines — all running locally.
 
 ## Architecture
 
@@ -107,7 +107,7 @@ Tests: accept path, 2-decline + accept path, no-driver path, late accept (TaskTi
 
 The workflow lives in `infra/ride-matching.asl.json`. Key patterns:
 
-- **Activities**: The worker long-polls, stores the task token in Redis, and doesn't complete until the driver responds or the 10s timer fires.
+- **Activities**: The worker long-polls, stores the task token in Redis, and doesn't complete until the driver responds or the 60s timer fires.
 - **Idempotent execution name**: `name = rideId` means duplicate StartExecution returns `ExecutionAlreadyExists`.
 - **JSONPath intrinsics**: `States.ArrayGetItem` and `States.MathAdd` advance the cursor without Lambda.
 - **Catch**: Both `States.Timeout` and `DriverDeclined` route to `AdvanceCursor → HasMoreDrivers`.
