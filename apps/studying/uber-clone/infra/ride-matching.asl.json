@@ -1,0 +1,120 @@
+{
+  "Comment": "Uber Clone ride-matching workflow. Offers a ride to drivers one at a time with a 10-second timeout. Advances to the next driver on decline or timeout.",
+  "StartAt": "FetchCandidates",
+  "States": {
+    "FetchCandidates": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:us-east-1:123456789012:activity:fetch-candidates",
+      "Comment": "Calls Location Service to find nearby available drivers. Returns { driverIds: string[], pickup, dropoff, rideId }",
+      "ResultPath": "$.candidates",
+      "Retry": [
+        {
+          "ErrorEquals": ["States.TaskFailed", "States.HeartbeatTimeout"],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 3,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Next": "InitCursor"
+    },
+    "InitCursor": {
+      "Type": "Pass",
+      "Result": { "index": 0 },
+      "ResultPath": "$.cursor",
+      "Next": "HasMoreDrivers"
+    },
+    "HasMoreDrivers": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Comment": "index < length → offer to next driver",
+          "Variable": "$.cursor.index",
+          "NumericLessThanPath": "$.candidates.count",
+          "Next": "SelectDriver"
+        }
+      ],
+      "Default": "NotifyNoDrivers"
+    },
+    "SelectDriver": {
+      "Type": "Pass",
+      "Parameters": {
+        "rideId.$": "$.rideId",
+        "pickup.$": "$.pickup",
+        "dropoff.$": "$.dropoff",
+        "candidates.$": "$.candidates",
+        "cursor.$": "$.cursor",
+        "currentDriverId.$": "States.ArrayGetItem($.candidates.driverIds, $.cursor.index)"
+      },
+      "Next": "OfferToDriver"
+    },
+    "OfferToDriver": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:us-east-1:123456789012:activity:offer-driver",
+      "Comment": "Worker stores task token in Redis and upserts offer in Ride Service. Driver accept/decline completes the task. Timeout includes study step delay headroom (up to 5s) plus a 10s driver response window.",
+      "TimeoutSeconds": 15,
+      "HeartbeatSeconds": 60,
+      "ResultPath": "$.offerResult",
+      "Catch": [
+        {
+          "ErrorEquals": ["States.Timeout", "DriverDeclined", "DriverLocked"],
+          "ResultPath": "$.error",
+          "Next": "AdvanceCursor"
+        }
+      ],
+      "Next": "NotifyMatched"
+    },
+    "AdvanceCursor": {
+      "Type": "Pass",
+      "Parameters": {
+        "rideId.$": "$.rideId",
+        "pickup.$": "$.pickup",
+        "dropoff.$": "$.dropoff",
+        "candidates.$": "$.candidates",
+        "cursor": {
+          "index.$": "States.MathAdd($.cursor.index, 1)"
+        }
+      },
+      "Next": "HasMoreDrivers"
+    },
+    "NotifyMatched": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:us-east-1:123456789012:activity:notify-matched",
+      "Comment": "Calls Ride Service /internal/rides/:id/matched with accepted driverId",
+      "Parameters": {
+        "rideId.$": "$.rideId",
+        "driverId.$": "$.currentDriverId"
+      },
+      "Retry": [
+        {
+          "ErrorEquals": ["States.TaskFailed"],
+          "IntervalSeconds": 1,
+          "MaxAttempts": 3,
+          "BackoffRate": 2.0
+        }
+      ],
+      "End": true
+    },
+    "NotifyNoDrivers": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:us-east-1:123456789012:activity:notify-no-drivers",
+      "Comment": "Calls Ride Service /internal/rides/:id/no-drivers",
+      "Parameters": {
+        "rideId.$": "$.rideId"
+      },
+      "Retry": [
+        {
+          "ErrorEquals": ["States.TaskFailed"],
+          "IntervalSeconds": 1,
+          "MaxAttempts": 3,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Next": "MatchingFailed"
+    },
+    "MatchingFailed": {
+      "Type": "Fail",
+      "Error": "NoDriversAvailable",
+      "Cause": "All nearby drivers declined or timed out"
+    }
+  }
+}
