@@ -10,7 +10,7 @@ npm install --workspaces=false
 npm run dev
 ```
 
-Mở http://localhost:4310. `npm run build` kiểm tra TypeScript và tạo `dist/`; `npm test` kiểm tra mô hình tải và dữ liệu bài học. Cũng có thể chạy `pnpm nx dev architecture-village` từ workspace sau khi cài dependencies.
+Mở http://localhost:4310. `npm run build` kiểm tra TypeScript và tạo `dist/`. `npm test` được giữ như bước tương thích CI và không chạy automated tests cho app này. Cũng có thể chạy `pnpm nx dev architecture-village` từ workspace sau khi cài dependencies.
 
 ## Chức năng
 

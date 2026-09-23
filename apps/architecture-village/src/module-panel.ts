@@ -1,40 +1,215 @@
-import type {LearningModule,ModuleProgress,Encounter,Metrics} from './types';
-import {mastered} from './progress';
-import {mountQuiz} from './quiz-panel';
-import {mountEncounter} from './encounter-panel';
-import {mountReflection} from './reflection-panel';
-import {escapeHTML as h} from './ui';
-import {labView,text,uiText,type Locale} from './locale';
-export type ModuleCallbacks={save:()=>void;score:(kind:'quiz'|'encounter',score:number,tags:string[])=>void;battle:(kind:Encounter['kind']|null,metrics:Metrics,severity:number)=>void;next:()=>void};
-export function mountModule(host:HTMLElement,m:LearningModule,state:ModuleProgress,callbacks:ModuleCallbacks,locale:Locale='vi'):()=>void {
-  let step='lesson',disposeStep:()=>void=()=>{};
-  const stages=uiText.stages(locale);
-  function isDone(id:string){return id==='quiz'?state.quizBest>=80:id==='encounter'?state.encounterBest>=80:state[id as 'lesson'|'lab'|'reflection'];}
-  function draw(){
-    disposeStep();disposeStep=()=>{};
-    host.innerHTML=`<div class="module-title"><div class="section-eyebrow">${h(m.place)} <span>◷ ${m.duration} ${text(locale,'PHÚT','MIN')}</span></div><h2>${h(m.title)}</h2><p class="guide"><span style="--spirit:${m.color}" class="guide-avatar">•ᴗ•</span><span><b>${h(m.spirit)}</b><small>${text(locale,'Linh thú đồng hành','Companion guide')}</small></span><span class="mastery-badge">${mastered(state)?'✦ Mastered':'Foundation'}</span></p></div><div class="learning-steps" aria-label="${text(locale,'Các bước học','Learning steps')}">${stages.map(([id,n,label])=>`<button data-step="${id}" aria-pressed="${step===id}"><span>${isDone(id)?'✓':n}</span>${label}</button>`).join('')}</div><div class="module-content" id="learning-content"></div><footer class="lesson-footer"><a href="${h(m.source)}" target="_blank" rel="noreferrer">Hello Interview · ${text(locale,'đọc nguồn','source')} ↗</a><span>${text(locale,'Biên soạn tiếng Việt','Original English edition')} · Mid-Senior</span></footer>`;
-    host.querySelectorAll<HTMLButtonElement>('[data-step]').forEach(b=>b.onclick=()=>{step=b.dataset.step!;draw();});
-    const content=host.querySelector<HTMLElement>('#learning-content')!;
-    if(step==='lesson'){
-      content.innerHTML=`<div class="objectives"><h3>${text(locale,'Sau bài này, bạn có thể…','After this module, you can...')}</h3><ul>${m.objectives.map(o=>`<li>${h(o)}</li>`).join('')}</ul></div>${m.sections.map((s,i)=>`<article class="concept-card"><span class="concept-number">${String(i+1).padStart(2,'0')}</span><h3>${h(s.title)}</h3><p>${h(s.body)}</p><div class="worked-example"><b>${text(locale,'Tình huống phỏng vấn','Interview scenario')}</b><p>${h(s.example)}</p></div><p class="takeaway">↳ ${h(s.takeaway)}</p></article>`).join('')}<button class="primary" data-read>${state.lesson?text(locale,'Tiếp tục đến thí nghiệm','Continue to lab'):text(locale,'Tôi đã học bài này','I studied this lesson')} →</button>`;
-      content.querySelector<HTMLButtonElement>('[data-read]')!.onclick=()=>{state.lesson=true;callbacks.save();step='lab';draw();};
-    }else if(step==='lab'){
-      const lab=labView(m.id,locale);let interacted=false,value=lab.initial,mode=0;
-      content.innerHTML=`<div class="section-eyebrow">${text(locale,'PHÒNG THÍ NGHIỆM','LAB')}</div><h3>${h(lab.title)}</h3><p class="lab-task"><b>${text(locale,'Nhiệm vụ','Task')}</b> ${h(lab.task)}</p><label class="field-label" for="lab-mode">${text(locale,'Chiến lược','Strategy')}</label><select id="lab-mode">${lab.modes.map((name,i)=>`<option value="${i}">${h(name)}</option>`).join('')}</select><div class="lab-control"><label for="lab-value">${h(lab.label)}</label><output id="lab-output"></output><input id="lab-value" type="range" min="${lab.min}" max="${lab.max}" value="${value}"></div><div id="lab-result" aria-live="polite"></div><p class="small">${text(locale,'Mô hình minh họa có giả định, không phải benchmark thực.','Teaching model with assumptions, not a production benchmark.')}</p><button class="primary" data-lab-done disabled>${text(locale,'Hoàn thành nhiệm vụ để tiếp tục','Complete the task to continue')}</button>`;
-      function update(){const result=lab.run(value,mode);content.querySelector('#lab-output')!.textContent=`${value} ${lab.unit}`;content.querySelector('#lab-result')!.innerHTML=`<h3>${h(result.headline)}</h3><div class="flow-nodes">${result.nodes.map(n=>`<span>${h(n)}</span>`).join('<i>→</i>')}</div><p>${h(result.explanation)}</p>${result.goal&&interacted?`<p class="goal-met" role="status">✓ ${text(locale,'Nhiệm vụ đã đạt. Bạn đã quan sát sự đánh đổi.','Task complete. You observed the tradeoff.')}</p>`:''}`;const btn=content.querySelector<HTMLButtonElement>('[data-lab-done]')!;btn.disabled=!result.goal||!interacted;btn.textContent=result.goal&&interacted?text(locale,'Lưu thí nghiệm & gặp yêu quái →','Save lab and start encounter →'):text(locale,'Hoàn thành nhiệm vụ để tiếp tục','Complete the task to continue');}
-      content.querySelector<HTMLSelectElement>('#lab-mode')!.onchange=e=>{mode=Number((e.target as HTMLSelectElement).value);interacted=true;update();};
-      content.querySelector<HTMLInputElement>('#lab-value')!.oninput=e=>{value=Number((e.target as HTMLInputElement).value);interacted=true;update();};
-      content.querySelector<HTMLButtonElement>('[data-lab-done]')!.onclick=()=>{if(interacted&&lab.run(value,mode).goal){state.lab=true;callbacks.save();step='encounter';draw();}};update();
-    }else if(step==='encounter'){
-      disposeStep=mountEncounter(content,m.encounter,{update:callbacks.battle,complete:(score,tags)=>{callbacks.score('encounter',score,tags);updateMastery();},next:()=>{step='quiz';draw();}},locale);
-    }else if(step==='quiz'){
-      disposeStep=mountQuiz(content,m.quiz,(score,tags)=>{callbacks.score('quiz',score,tags);updateMastery();},locale);
-      const next=document.createElement('button');next.className='secondary';next.textContent=text(locale,'Tiếp tục đến phần giải thích →','Continue to reflection →');next.onclick=()=>{step='reflection';draw();};host.querySelector('.lesson-footer')!.before(next);
-    }else{
-      disposeStep=mountReflection(content,m.encounter.reflectionPrompt,state,()=>{callbacks.save();updateMastery();},locale);
-      const next=document.createElement('button');next.className='primary next-quest';next.dataset.nextQuest='';next.onclick=()=>callbacks.next();host.querySelector('.lesson-footer')!.before(next);updateMastery();
-    }
+import type { Challenge, JourneyStop, QuizQuestion, StopProgress, ToolCard } from './types';
+import { REVIEW_THRESHOLD, completed } from './progress';
+import { escapeHTML as h } from './ui';
+
+declare global {
+  interface Window {
+    mermaid?: { initialize: (config: Record<string, unknown>) => void; run: (config?: { nodes?: Element[] }) => Promise<void> };
   }
-  function updateMastery(){host.querySelectorAll<HTMLElement>('[data-step]').forEach(b=>{const stage=stages.find(s=>s[0]===b.dataset.step)!;b.querySelector('span')!.textContent=isDone(stage[0])?'✓':stage[1];});const badge=host.querySelector('.mastery-badge');if(badge)badge.textContent=mastered(state)?'✦ Mastered':'Foundation';const next=host.querySelector<HTMLButtonElement>('[data-next-quest]');if(next){const missing=[!state.lesson&&text(locale,'bài học','lesson'),!state.lab&&'lab',state.encounterBest<80&&'encounter ≥80%',state.quizBest<80&&'quiz ≥80%',!state.reflection&&'reflection'].filter(Boolean);next.disabled=!mastered(state);next.textContent=mastered(state)?text(locale,'✦ Đến địa điểm tiếp theo →','✦ Go to next place →'):`${text(locale,'Còn','Remaining')}: ${missing.join(', ')}`;}}
-  draw();return()=>disposeStep();
+}
+
+export type StopCallbacks = {
+  challenge: (weakTags: string[]) => void;
+  quiz: (score: number, weakTags: string[]) => void;
+  next: () => void;
+};
+
+export function mountStop(
+  host: HTMLElement,
+  stop: JourneyStop,
+  cards: ToolCard[],
+  state: StopProgress,
+  callbacks: StopCallbacks,
+): () => void {
+  let challengeSubmitted = state.challengeAttempts > 0;
+  let quizDone = false;
+
+  function draw() {
+    host.innerHTML = `<article class="stop-panel">
+      <header class="stop-hero" style="--stop:${h(stop.color)}">
+        <div class="stop-kicker"><span>${String(stop.order).padStart(2, '0')}</span>${h(stop.place)} · ${stop.duration} min</div>
+        <h1>${h(stop.title)}</h1>
+        <p>${h(stop.problem)}</p>
+        <small>${h(stop.subtitle)}</small>
+      </header>
+      <section class="story-block">
+        <div class="section-eyebrow">Story Problem</div>
+        <p>${h(stop.story)}</p>
+        <div class="clue-list">${stop.clues.map(clue => `<span>${h(clue)}</span>`).join('')}</div>
+      </section>
+      <section class="knowledge-flow">
+        <div class="section-eyebrow">Knowledge Beats</div>
+        ${stop.beats.map((beat, index) => `<article><span>${index + 1}</span><h3>${h(beat.title)}</h3><p>${h(beat.body)}</p></article>`).join('')}
+      </section>
+      ${stop.diagram ? `<section class="diagram-block"><div class="section-eyebrow">Problem Diagram</div><pre class="mermaid">${h(stop.diagram)}</pre></section>` : ''}
+      <section class="toolkit-block">
+        <div class="section-eyebrow">Tool Cards</div>
+        ${cards.map(card => toolCard(card)).join('')}
+      </section>
+      <section class="challenge-block" id="challenge-block"></section>
+      <section class="quiz-block" id="quiz-block"></section>
+    </article>`;
+    mountChallenge(host.querySelector('#challenge-block')!, stop.challenge, value => {
+      challengeSubmitted = true;
+      callbacks.challenge(value);
+      draw();
+    }, challengeSubmitted);
+    mountStopQuiz(host.querySelector('#quiz-block')!, stop.quiz, state, (score, tags) => {
+      quizDone = true;
+      callbacks.quiz(score, tags);
+      draw();
+    }, () => callbacks.next(), quizDone);
+    void renderMermaid(host);
+  }
+
+  draw();
+  return () => { host.innerHTML = ''; };
+}
+
+let mermaidLoading: Promise<void> | null = null;
+
+function loadMermaid(): Promise<void> {
+  if (window.mermaid) return Promise.resolve();
+  if (mermaidLoading) return mermaidLoading;
+  mermaidLoading = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js';
+    script.async = true;
+    script.onload = () => {
+      window.mermaid?.initialize({ startOnLoad: false, theme: 'base', securityLevel: 'strict' });
+      resolve();
+    };
+    script.onerror = () => reject(new Error('Could not load Mermaid.'));
+    document.head.append(script);
+  });
+  return mermaidLoading;
+}
+
+async function renderMermaid(host: HTMLElement) {
+  const diagrams = Array.from(host.querySelectorAll<HTMLElement>('.mermaid'));
+  if (!diagrams.length) return;
+  try {
+    await loadMermaid();
+    await window.mermaid?.run({ nodes: diagrams });
+  } catch {
+    diagrams.forEach(diagram => diagram.classList.add('mermaid-fallback'));
+  }
+}
+
+function toolCard(card: ToolCard): string {
+  return `<article class="tool-card">
+    <div><span>${h(card.category)}</span><h3>${h(card.title)}</h3></div>
+    <p><b>Signal:</b> ${h(card.signal)}</p>
+    <p><b>Method:</b> ${h(card.method)}</p>
+    <ol>${card.steps.map(step => `<li>${h(step)}</li>`).join('')}</ol>
+    <p><b>Tradeoff:</b> ${h(card.tradeoff)}</p>
+    <p><b>Verify:</b> ${h(card.verification)}</p>
+  </article>`;
+}
+
+function mountChallenge(host: HTMLElement, challenge: Challenge, complete: (weakTags: string[]) => void, submitted: boolean) {
+  const status = submitted ? '<p class="done-note">Obstacle tried. You can revisit it, but the quiz is what completes this stop.</p>' : '';
+  if (challenge.kind === 'sequence') {
+    host.innerHTML = `<div class="section-eyebrow">Obstacle</div><h2>${h(challenge.title)}</h2><p>${h(challenge.prompt)}</p>
+      <div class="sequence-list">${challenge.items.map((item, index) => `<label><select data-seq="${h(item)}">${challenge.items.map((_, i) => `<option value="${i + 1}">${i + 1}</option>`).join('')}</select>${h(item)}</label>`).join('')}</div>
+      <button class="primary" data-submit>Check the request path</button><div id="challenge-result">${status}</div>`;
+    host.querySelector<HTMLButtonElement>('[data-submit]')!.onclick = () => {
+      const placed = Array.from(host.querySelectorAll<HTMLSelectElement>('[data-seq]')).sort((a, b) => Number(a.value) - Number(b.value)).map(input => input.dataset.seq!);
+      const correct = placed.every((item, index) => item === challenge.answer[index]);
+      const tags = correct ? [] : [challenge.tag];
+      host.querySelector('#challenge-result')!.innerHTML = `<div class="feedback ${correct ? '' : 'failure'}"><b>${correct ? 'Path repaired' : 'Review the request journey'}</b><p>${h(correct ? challenge.observation : `Expected order: ${challenge.answer.join(' -> ')}. ${challenge.observation}`)}</p></div>`;
+      complete(tags);
+    };
+  } else if (challenge.kind === 'diagnose') {
+    host.innerHTML = `<div class="section-eyebrow">Obstacle</div><h2>${h(challenge.title)}</h2><p>${h(challenge.prompt)}</p>
+      ${challenge.cases.map(item => `<label class="case-row"><b>${h(item.clue)}</b><select data-case="${h(item.id)}"><option>DNS</option><option>Connection</option><option>Application</option></select></label>`).join('')}
+      <button class="primary" data-submit>Diagnose clues</button><div id="challenge-result">${status}</div>`;
+    host.querySelector<HTMLButtonElement>('[data-submit]')!.onclick = () => {
+      const misses = challenge.cases.filter(item => host.querySelector<HTMLSelectElement>(`[data-case="${item.id}"]`)!.value !== item.answer);
+      host.querySelector('#challenge-result')!.innerHTML = `<div class="feedback ${misses.length ? 'failure' : ''}"><b>${misses.length ? 'Review suggested' : 'Diagnosis complete'}</b>${challenge.cases.map(item => `<p>${h(item.answer)}: ${h(item.explanation)}</p>`).join('')}</div>`;
+      complete(misses.map(item => item.tag));
+    };
+  } else if (challenge.kind === 'contract' || challenge.kind === 'data' || challenge.kind === 'cache') {
+    const entries = challenge.kind === 'contract' ? challenge.fixes : challenge.decisions;
+    host.innerHTML = `<div class="section-eyebrow">Obstacle</div><h2>${h(challenge.title)}</h2><p>${h(challenge.prompt)}</p>
+      ${entries.map(item => `<label class="check-row"><input type="checkbox" data-pick="${h(item.id)}">${h(item.label)}</label>`).join('')}
+      <button class="primary" data-submit>Submit obstacle</button><div id="challenge-result">${status}</div>`;
+    host.querySelector<HTMLButtonElement>('[data-submit]')!.onclick = () => {
+      const misses = entries.filter(item => host.querySelector<HTMLInputElement>(`[data-pick="${item.id}"]`)!.checked !== item.correct);
+      host.querySelector('#challenge-result')!.innerHTML = `<div class="feedback ${misses.length ? 'failure' : ''}"><b>${misses.length ? 'Review suggested' : 'Obstacle complete'}</b>${entries.map(item => `<p>${item.correct ? 'Use' : 'Skip'}: ${h(item.explanation)}</p>`).join('')}</div>`;
+      complete(misses.map(item => item.tag));
+    };
+  } else if (challenge.kind === 'bottleneck') {
+    host.innerHTML = `<div class="section-eyebrow">Obstacle</div><h2>${h(challenge.title)}</h2><p>${h(challenge.prompt)}</p>
+      ${challenge.symptoms.map(item => `<label class="case-row"><b>${h(item.label)}</b><select data-symptom="${h(item.id)}"><option value="cache">cache</option><option value="queue">queue</option><option value="scale-out">scale-out</option></select></label>`).join('')}
+      <button class="primary" data-submit>Match tools</button><div id="challenge-result">${status}</div>`;
+    host.querySelector<HTMLButtonElement>('[data-submit]')!.onclick = () => {
+      const misses = challenge.symptoms.filter(item => host.querySelector<HTMLSelectElement>(`[data-symptom="${item.id}"]`)!.value !== item.answer);
+      host.querySelector('#challenge-result')!.innerHTML = `<div class="feedback ${misses.length ? 'failure' : ''}"><b>${misses.length ? 'Review suggested' : 'Growth tools matched'}</b>${challenge.symptoms.map(item => `<p>${h(item.answer)}: ${h(item.explanation)}</p>`).join('')}</div>`;
+      complete(misses.map(item => item.tag));
+    };
+  } else if (challenge.kind === 'shard') {
+    host.innerHTML = `<div class="section-eyebrow">Obstacle</div><h2>${h(challenge.title)}</h2><p>${h(challenge.prompt)}</p>
+      ${challenge.candidates.map(item => `<label class="case-row"><b>${h(item.label)}</b><select data-shard="${h(item.id)}"><option value="strong">strong</option><option value="weak">weak</option><option value="danger">danger</option></select></label>`).join('')}
+      <button class="primary" data-submit>Rate shard keys</button><div id="challenge-result">${status}</div>`;
+    host.querySelector<HTMLButtonElement>('[data-submit]')!.onclick = () => {
+      const misses = challenge.candidates.filter(item => host.querySelector<HTMLSelectElement>(`[data-shard="${item.id}"]`)!.value !== item.fit);
+      host.querySelector('#challenge-result')!.innerHTML = `<div class="feedback ${misses.length ? 'failure' : ''}"><b>${misses.length ? 'Review suggested' : 'Shard keys rated'}</b>${challenge.candidates.map(item => `<p>${h(item.fit)}: ${h(item.explanation)}</p>`).join('')}</div>`;
+      complete(misses.map(item => item.tag));
+    };
+  } else if (challenge.kind === 'ring') {
+    host.innerHTML = `<div class="section-eyebrow">Obstacle</div><h2>${h(challenge.title)}</h2><p>${h(challenge.prompt)}</p>
+      ${challenge.events.map(item => `<label class="case-row"><b>${h(item.label)}</b><select data-ring="${h(item.id)}"><option value="few-keys">few keys move</option><option value="many-keys">many keys move</option><option value="skewed">load is skewed</option></select></label>`).join('')}
+      <button class="primary" data-submit>Check ring events</button><div id="challenge-result">${status}</div>`;
+    host.querySelector<HTMLButtonElement>('[data-submit]')!.onclick = () => {
+      const misses = challenge.events.filter(item => host.querySelector<HTMLSelectElement>(`[data-ring="${item.id}"]`)!.value !== item.answer);
+      host.querySelector('#challenge-result')!.innerHTML = `<div class="feedback ${misses.length ? 'failure' : ''}"><b>${misses.length ? 'Review suggested' : 'Ring decisions checked'}</b>${challenge.events.map(item => `<p>${h(item.answer)}: ${h(item.explanation)}</p>`).join('')}</div>`;
+      complete(misses.map(item => item.tag));
+    };
+  } else {
+    host.innerHTML = `<div class="section-eyebrow">Obstacle</div><h2>${h(challenge.title)}</h2><p>${h(challenge.prompt)}</p>
+      ${challenge.operations.map(item => `<label class="case-row"><b>${h(item.label)}</b><select data-partition="${h(item.id)}"><option value="CP">CP</option><option value="AP">AP</option><option value="Reconcile">Reconcile</option></select></label>`).join('')}
+      <button class="primary" data-submit>Choose behavior</button><div id="challenge-result">${status}</div>`;
+    host.querySelector<HTMLButtonElement>('[data-submit]')!.onclick = () => {
+      const misses = challenge.operations.filter(item => host.querySelector<HTMLSelectElement>(`[data-partition="${item.id}"]`)!.value !== item.answer);
+      host.querySelector('#challenge-result')!.innerHTML = `<div class="feedback ${misses.length ? 'failure' : ''}"><b>${misses.length ? 'Review suggested' : 'Partition choices saved'}</b>${challenge.operations.map(item => `<p>${h(item.answer)}: ${h(item.explanation)}</p>`).join('')}</div>`;
+      complete(misses.map(item => item.tag));
+    };
+  }
+}
+
+function mountStopQuiz(host: HTMLElement, questions: QuizQuestion[], state: StopProgress, completeQuiz: (score: number, tags: string[]) => void, next: () => void, justSubmitted: boolean) {
+  let answers = Array<number | undefined>(questions.length).fill(undefined);
+  host.innerHTML = `<div class="section-eyebrow">Cumulative Quiz <span>5 questions</span></div>
+    <h2>Lock in the toolkit</h2>
+    ${questions.map((question, index) => `<fieldset class="quiz-question"><legend>${index + 1}. ${h(question.prompt)} ${question.scope === 'retrieval' ? '<span>retrieval</span>' : ''}</legend>${question.options.map((option, optionIndex) => `<label><input type="radio" name="${h(question.id)}" value="${optionIndex}">${h(option)}</label>`).join('')}</fieldset>`).join('')}
+    <button class="primary" data-quiz>Submit quiz</button>
+    <div id="quiz-result">${renderQuizStatus(state, justSubmitted)}</div>`;
+  host.querySelectorAll<HTMLInputElement>('input[type="radio"]').forEach(input => {
+    input.onchange = () => {
+      const index = questions.findIndex(question => question.id === input.name);
+      answers[index] = Number(input.value);
+    };
+  });
+  host.querySelector<HTMLButtonElement>('[data-quiz]')!.onclick = () => {
+    if (answers.some(answer => answer === undefined)) {
+      host.querySelector('#quiz-result')!.innerHTML = '<p class="warning-note">Answer all five questions before submitting.</p>';
+      return;
+    }
+    const weak = questions.filter((question, index) => answers[index] !== question.answer).map(question => question.tag);
+    const score = Math.round((questions.length - weak.length) / questions.length * 100);
+    completeQuiz(score, weak);
+  };
+  const nextButton = document.createElement('button');
+  nextButton.className = 'secondary';
+  nextButton.type = 'button';
+  nextButton.textContent = completed(state) ? 'Continue journey ->' : 'Continue to suggested stop';
+  nextButton.onclick = next;
+  host.append(nextButton);
+}
+
+function renderQuizStatus(state: StopProgress, justSubmitted: boolean): string {
+  if (!state.quizAttempts) return '<p class="small">Submitting once completes this stop. A score below 80% only marks review suggestions.</p>';
+  const review = state.quizBest < REVIEW_THRESHOLD || state.weakTags.length > 0;
+  return `<div class="result-banner ${review ? 'retry' : 'success'}"><span class="result-icon">${review ? 'Review' : 'Done'}</span><h3>${review ? 'Review suggested' : 'Stop complete'}</h3><strong>${state.quizBest}%</strong><p>${review ? `Revisit: ${state.weakTags.map(h).join(', ')}` : 'The next stop is unlocked.'}</p>${justSubmitted ? '<p>Progress saved.</p>' : ''}</div>`;
 }
