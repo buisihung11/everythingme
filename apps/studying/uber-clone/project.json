@@ -1,0 +1,66 @@
+{
+  "name": "uber-clone",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/studying/uber-clone",
+  "projectType": "application",
+  "tags": ["scope:studying", "type:app", "category:studying"],
+  "implicitDependencies": ["foundation-ui"],
+  "targets": {
+    "dev": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm dev",
+        "cwd": "apps/studying/uber-clone"
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm typecheck",
+        "cwd": "apps/studying/uber-clone"
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm build",
+        "cwd": "apps/studying/uber-clone"
+      }
+    },
+    "infra:up": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm infra:up",
+        "cwd": "apps/studying/uber-clone"
+      }
+    },
+    "db:setup": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm db:setup",
+        "cwd": "apps/studying/uber-clone"
+      }
+    },
+    "bootstrap": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm bootstrap",
+        "cwd": "apps/studying/uber-clone"
+      }
+    },
+    "seed": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm seed",
+        "cwd": "apps/studying/uber-clone"
+      }
+    },
+    "cdk:synth": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm cdk:synth",
+        "cwd": "apps/studying/uber-clone"
+      }
+    }
+  }
+}

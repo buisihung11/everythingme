@@ -46,7 +46,7 @@ jobs:
         run: pnpm nx test:coverage blog
 
       - name: Report coverage
-        if: always()
+        if: success()
         uses: davelosert/vitest-coverage-report-action@v2
         with:
           working-directory: apps/blog

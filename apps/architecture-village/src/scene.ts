@@ -1,6 +1,6 @@
 import * as T from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import type { Encounter, LearningModule, Metrics, Village } from './types';
+import type { Encounter, FoundationVillage, JourneyStop, Metrics } from './types';
 
 type Status = 'available' | 'active' | 'mastered' | 'locked';
 type Resources = { geometries: Set<T.BufferGeometry>; materials: Map<string, T.MeshStandardMaterial> };
@@ -9,13 +9,13 @@ const biomes = {
   meadow: { sky: '#dce9dc', turf: '#98bc7e', earth: '#a88b65', path: '#e8d8ad', leaf: '#69955b', water: '#82c6ca', roof: '#b97158' },
   coast: { sky: '#dbeef0', turf: '#d7d4a0', earth: '#bd9e76', path: '#f3e3ba', leaf: '#75a697', water: '#70bacb', roof: '#659da6' },
   highlands: { sky: '#e2dfeb', turf: '#9baa8a', earth: '#888b87', path: '#d4cdb8', leaf: '#587c78', water: '#93b6cf', roof: '#8881a2' },
-} satisfies Record<Village['biome'], Record<string, string>>;
+} satisfies Record<FoundationVillage['biome'], Record<string, string>>;
 
 /** A self-contained village; all DOM and GPU resources belong to this instance. */
 export function createScene(
   host: HTMLElement,
-  village: Village,
-  modules: LearningModule[],
+  village: FoundationVillage,
+  modules: JourneyStop[],
   onSelect: (id: string) => void,
 ) {
   const palette = biomes[village.biome];
@@ -140,7 +140,7 @@ export function createScene(
     sun.shadow.normalBias = .035;
     scene.add(hemi, sun, sun.target);
     box(halfX * 2, 1.35, depth, palette.earth, 0, -.65, centerZ);
-    box(halfX * 2, .18, depth, palette.turf, 0, .06, centerZ);
+    const ground = box(halfX * 2, .18, depth, palette.turf, 0, .06, centerZ);
     box(3.4, .06, 3.4, palette.path, 0, .16, 0);
     path(new T.Vector3(), new T.Vector3(0, 0, arenaZ));
     localModules.forEach(m => {
@@ -221,7 +221,7 @@ export function createScene(
     const windows: T.Mesh[] = [];
     const guardians: T.Group[] = [];
     const pickable: T.Object3D[] = [];
-    const places = new Map<string, { group: T.Group; button: HTMLButtonElement; anchor: T.Vector3; marker: T.Mesh; status: Status; module: LearningModule }>();
+    const places = new Map<string, { group: T.Group; button: HTMLButtonElement; anchor: T.Vector3; marker: T.Mesh; status: Status; module: JourneyStop }>();
     const statusColors: Record<Status, string> = { available: '#b4c4a0', active: '#f5c877', mastered: '#83bb9a', locked: '#969c9b' };
     localModules.forEach((module, index) => {
       const group = new T.Group(); group.position.set(module.position[0], 0, module.position[1]);
@@ -282,7 +282,7 @@ export function createScene(
       place.button.classList.toggle('selected', selected === id);
       place.button.setAttribute('aria-pressed', String(selected === id));
       place.button.setAttribute('aria-disabled', String(place.status === 'locked'));
-      place.button.setAttribute('aria-label', `${place.module.title}, ${place.module.place}, ${place.module.spirit}, ${place.status}`);
+      place.button.setAttribute('aria-label', `${place.module.title}, ${place.module.place}, ${place.status}`);
       place.marker.material = material(statusColors[place.status]);
     }
     function select(id: string) {
@@ -294,14 +294,29 @@ export function createScene(
       selectionRing.position.set(place.group.position.x, .38, place.group.position.z);
       places.forEach((_, key) => updateLabel(key));
       if (!changed) return;
-      const destination = new T.Vector3(place.group.position.x, .17, place.group.position.z + 1.55);
-      // Horizontal house lanes join the central north/south footpath.
-      waypoints = [new T.Vector3(0, .17, player.position.z), new T.Vector3(0, .17, destination.z), destination];
-      if (reduced) { player.position.copy(destination); waypoints = []; }
+      walkTo(new T.Vector3(place.group.position.x, .17, place.group.position.z + 1.55));
     }
     function activatePlace(id: string) {
-      if (disposed || places.get(id)?.status === 'locked') return;
+      if (disposed) return;
+      const place = places.get(id);
+      if (!place) return;
+      if (place.status === 'locked') {
+        onSelect(id);
+        return;
+      }
       select(id); onSelect(id);
+    }
+    function walkTo(target: T.Vector3) {
+      const x = T.MathUtils.clamp(target.x, -halfX + .8, halfX - .8);
+      const z = T.MathUtils.clamp(target.z, back + .8, front - 3.25);
+      const door = new T.Vector3(x, .17, z);
+      const onCentral = Math.abs(x) < 1.1;
+      const current = player.position.clone();
+      const currentLane = new T.Vector3(0, .17, T.MathUtils.clamp(current.z, back + .8, front - 3.25));
+      const targetLane = new T.Vector3(0, .17, door.z);
+      waypoints = onCentral ? [door] : [currentLane, targetLane, door];
+      waypoints = waypoints.filter((point, index, list) => index === 0 || point.distanceTo(list[index - 1]) > .08);
+      if (reduced) { player.position.copy(door); waypoints = []; }
     }
     places.forEach((_, id) => updateLabel(id));
 
@@ -430,7 +445,12 @@ export function createScene(
       const hit = raycaster.intersectObjects(pickable, true)[0];
       let object: T.Object3D | null = hit?.object ?? null;
       while (object && !object.userData.moduleId) object = object.parent;
-      if (object) activatePlace(object.userData.moduleId as string);
+      if (object) {
+        activatePlace(object.userData.moduleId as string);
+        return;
+      }
+      const terrain = raycaster.intersectObject(ground, false)[0];
+      if (terrain) walkTo(new T.Vector3(terrain.point.x, .17, terrain.point.z));
     };
     renderer.domElement.addEventListener('pointerdown', pointerDown);
     renderer.domElement.addEventListener('pointerup', pointerUp);

@@ -20,6 +20,12 @@
       "@everythingme/auth": ["libs/foundation/auth/src/index.ts"],
       "@everythingme/ui": ["libs/foundation/ui/src/index.ts"],
       "@everythingme/api": ["libs/foundation/api/src/index.ts"],
+      "@studying/uber-clone/shared": [
+        "apps/studying/uber-clone/packages/shared/src/index.ts"
+      ],
+      "@studying/uber-clone/shared/*": [
+        "apps/studying/uber-clone/packages/shared/src/*"
+      ],
       "@studying/mfe-shared/*": ["apps/studying/mfe-shared/*"],
       "mfe_dashboard/Module": ["./apps/studying/mfe_dashboard/src/remote-entry.ts"],
       "mfe-dashboard/Module": ["./apps/studying/mfe_dashboard/src/remote-entry.ts"],

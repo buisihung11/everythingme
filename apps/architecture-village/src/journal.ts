@@ -1,17 +1,72 @@
-import type {Curriculum,ProgressV2} from './types';
-import {mastered,parseBackup,STORAGE_KEY} from './progress';
-import {escapeHTML as h,notify} from './ui';
-import {text,type Locale} from './locale';
-export function openJournal(c:Curriculum,p:ProgressV2,replace:(p:ProgressV2)=>void,locale:Locale='vi'){
-  const dialog=document.createElement('dialog');dialog.className='journal-dialog';dialog.setAttribute('aria-label',text(locale,'Sổ hành trình','Journey journal'));
-  dialog.innerHTML=`<div class="dialog-heading"><div><div class="eyebrow">${text(locale,'HẠT MẦM & NHỮNG BÀI HỌC','SEEDS & LESSONS')}</div><h2>${text(locale,'Sổ hành trình','Journey journal')}</h2></div><button data-close aria-label="${text(locale,'Đóng sổ','Close journal')}">×</button></div><p>${text(locale,'Điểm cao nhất, những tradeoff còn yếu và bản sao tiến độ của bạn.','Best scores, weak tradeoffs and your progress backup.')}</p>${p.legacyXP?`<p class="legacy">✧ Legacy Explorer XP: ${p.legacyXP}. ${text(locale,'Kỷ niệm từ làng cũ, không mở khóa Foundation mới.','A memory from the old village; it does not unlock the new Foundation path.')}</p>`:''}<div class="journal-list">${c.villages.map(v=>`<h3>${h(v.title)} <small>Boss ${p.bosses[v.id].best}%</small></h3>${v.moduleIds.map(id=>{const m=c.modules.find(m=>m.id===id)!,s=p.modules[id];return`<article><div><b>${mastered(s)?'✦':'♧'} ${h(m.title)}</b><span>Quiz ${s.quizBest}% · Encounter ${s.encounterBest}%</span></div><small>${[s.lesson?`✓ ${text(locale,'Bài học','Lesson')}`:`○ ${text(locale,'Bài học','Lesson')}`,s.lab?'✓ Lab':'○ Lab',s.reflection?`✓ ${text(locale,'Giải thích','Reflection')}`:`○ ${text(locale,'Giải thích','Reflection')}`].join(' · ')}</small>${s.weakTags.length?`<p>${text(locale,'Đã từng vấp — nên ôn:','Earlier misses — review:')} ${s.weakTags.map(h).join(', ')}</p>`:''}</article>`;}).join('')}`).join('')}</div><div class="backup-actions"><button class="primary" data-export>↓ Export JSON</button><label class="secondary file-label">↑ ${text(locale,'Chọn backup','Choose backup')}<input type="file" id="backup-file" accept="application/json,.json"></label></div><p class="small">${text(locale,'Import thay thế tiến độ trên thiết bị sau khi bạn xem bản tóm tắt. Export trước nếu cần giữ cả hai.','Import replaces progress on this device after preview. Export first if you need both copies.')}</p><div id="import-preview" aria-live="polite"></div>`;
-  document.body.append(dialog);dialog.showModal();
-  dialog.querySelector<HTMLButtonElement>('[data-close]')!.onclick=()=>dialog.close();dialog.onclose=()=>dialog.remove();
-  dialog.querySelector<HTMLButtonElement>('[data-export]')!.onclick=()=>{const blob=new Blob([JSON.stringify(p,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=`hearth-foundation-${new Date().toISOString().slice(0,10)}.json`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
-  dialog.querySelector<HTMLInputElement>('#backup-file')!.onchange=async event=>{
-    const file=(event.target as HTMLInputElement).files?.[0];if(!file)return;const preview=dialog.querySelector<HTMLElement>('#import-preview')!;
-    try{if(file.size>500000)throw new Error(text(locale,'Backup vượt giới hạn 500 KB.','Backup is larger than 500 KB.'));const next=parseBackup(await file.text(),c);preview.innerHTML=`<div class="import-summary"><b>${text(locale,'Backup hợp lệ','Valid backup')}</b><p>${Object.values(next.modules).filter(mastered).length}/11 module mastery · ${Object.values(next.bosses).filter(b=>b.best>=80).length}/3 boss · ${h(next.updatedAt)}</p><button class="primary" data-confirm-import>${text(locale,'Thay thế bằng backup này','Replace with this backup')}</button></div>`;preview.querySelector<HTMLButtonElement>('[data-confirm-import]')!.onclick=()=>{
-      try{localStorage.setItem(STORAGE_KEY,JSON.stringify(next));replace(next);dialog.close();notify(text(locale,'Đã khôi phục tiến độ từ backup.','Progress restored from backup.'));}catch{preview.textContent=text(locale,'Không thể lưu backup. Tiến độ hiện tại được giữ nguyên.','Could not save backup. Current progress was kept.');}
-    };}catch(error){preview.textContent=error instanceof Error?error.message:text(locale,'Không thể đọc tệp.','Could not read file.');}
+import type { Curriculum, ProgressV4, ToolCard } from './types';
+import { completed, parseBackup, STORAGE_KEY, stopsForVillage } from './progress';
+import { escapeHTML as h, notify } from './ui';
+
+export function openJournal(c: Curriculum, p: ProgressV4, replace: (p: ProgressV4) => void) {
+  const dialog = document.createElement('dialog');
+  dialog.className = 'journal-dialog';
+  dialog.setAttribute('aria-label', 'Toolkit Journal');
+  const discovered = c.toolCards.filter(card => p.discoveredToolCards.includes(card.id));
+  const bySymptom = groupBySymptom(discovered);
+  dialog.innerHTML = `<div class="dialog-heading"><div><div class="eyebrow">TOOLKIT JOURNAL</div><h2>Methods you have collected</h2></div><button data-close aria-label="Close journal">×</button></div>
+    <p>The journal groups reusable methods by the symptom that should make you reach for them.</p>
+    <div class="journal-list">
+      <h3>Journey Progress <small>${c.stops.filter(stop => completed(p.stops[stop.id])).length}/${c.stops.length} stops</small></h3>
+      ${c.villages.map(village => {
+        const stops = stopsForVillage(c, village.id);
+        const count = stops.filter(stop => completed(p.stops[stop.id])).length;
+        return `<h3>${h(village.title)} <small>${count}/${stops.length} stops</small></h3>${stops.map(stop => {
+        const state = p.stops[stop.id];
+        return `<article><div><b>${completed(state) ? '✓' : '○'} ${h(stop.place)}</b><span>Best quiz ${state.quizBest}% · ${state.quizAttempts} attempts</span></div>${state.weakTags.length ? `<p>Review suggested: ${state.weakTags.map(h).join(', ')}</p>` : ''}</article>`;
+        }).join('')}`;
+      }).join('')}
+      ${Object.entries(bySymptom).map(([symptom, cards]) => `<h3>${h(symptom)} <small>${cards.length} cards</small></h3>${cards.map(card => `<article><div><b>${h(card.title)}</b><span>${h(card.category)}</span></div><small>${h(card.signal)}</small></article>`).join('')}`).join('')}
+    </div>
+    <div class="backup-actions"><button class="primary" data-export>Export JSON</button><label class="secondary file-label">Import JSON<input type="file" id="backup-file" accept="application/json,.json"></label></div>
+    <p class="small">Import replaces local v4 progress only. Old v2 progress is ignored by this version; v3 is migrated automatically on first load.</p>
+    <div id="import-preview" aria-live="polite"></div>`;
+  document.body.append(dialog);
+  dialog.showModal();
+  dialog.querySelector<HTMLButtonElement>('[data-close]')!.onclick = () => dialog.close();
+  dialog.onclose = () => dialog.remove();
+  dialog.querySelector<HTMLButtonElement>('[data-export]')!.onclick = () => {
+    const blob = new Blob([JSON.stringify(p, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `architecture-village-v4-${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
+  dialog.querySelector<HTMLInputElement>('#backup-file')!.onchange = async event => {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    const preview = dialog.querySelector<HTMLElement>('#import-preview')!;
+    try {
+      if (file.size > 500000) throw new Error('Backup is larger than 500 KB.');
+      const next = parseBackup(await file.text(), c);
+      preview.innerHTML = `<div class="import-summary"><b>Valid v4 backup</b><p>${Object.values(next.stops).filter(completed).length}/${c.stops.length} stops · ${h(next.updatedAt)}</p><button class="primary" data-confirm-import>Replace local progress</button></div>`;
+      preview.querySelector<HTMLButtonElement>('[data-confirm-import]')!.onclick = () => {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+          replace(next);
+          dialog.close();
+          notify('Progress restored from v4 backup.');
+        } catch {
+          preview.textContent = 'Could not save backup. Current progress was kept.';
+        }
+      };
+    } catch (error) {
+      preview.textContent = error instanceof Error ? error.message : 'Could not read file.';
+    }
+  };
+}
+
+function groupBySymptom(cards: ToolCard[]): Record<string, ToolCard[]> {
+  const result: Record<string, ToolCard[]> = {};
+  for (const card of cards) {
+    result[card.symptom] ??= [];
+    result[card.symptom].push(card);
+  }
+  return result;
 }

@@ -11,7 +11,8 @@
     "mfe:users": "nx serve mfe_users",
     "mfe:products": "nx run mfe_products_vue:serve",
     "mfe:analytics": "nx serve mfe_analytics",
-    "mfe:all": "nx run-many -t serve -p mfe_shell,mfe_dashboard,mfe_users,mfe_products_vue,mfe_analytics --parallel=5"
+    "mfe:all": "nx run-many -t serve -p mfe_shell,mfe_dashboard,mfe_users,mfe_products_vue,mfe_analytics --parallel=5",
+    "uber": "nx dev uber-clone"
   },
   "private": true,
   "packageManager": "pnpm@10.12.1",
