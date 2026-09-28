@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { zValidator } from '@hono/zod-validator';
-import { eq, and, sql as rawSql } from 'drizzle-orm';
+import { eq, and, inArray, sql as rawSql } from 'drizzle-orm';
 import { z } from 'zod';
 import { randomUUID } from 'crypto';
 import {
@@ -20,6 +20,17 @@ import {
   releaseDriverLock,
   extendDriverLock,
 } from './location-client.js';
+import {
+  applyNoDrivers,
+  applyRideMatched,
+  completeRide,
+  respondToDriverOffer,
+  type RideLifecycleDeps,
+} from './ride-lifecycle.js';
+import {
+  MATCH_APPLY_STATUSES,
+  NO_DRIVERS_APPLY_STATUSES,
+} from './ride-state.js';
 
 const MATCHING_URL =
   process.env.MATCHING_URL ?? 'http://localhost:4402';
@@ -28,6 +39,101 @@ const MATCHING_URL =
 const OFFER_LOCK_TTL = 90;
 /** Matched-ride lock TTL (seconds). Released when the rider completes the trip. */
 const MATCHED_LOCK_TTL = 3600;
+
+const lifecycleDeps: RideLifecycleDeps = {
+  async findPendingOffer(rideId, driverId) {
+    const offer = await db.query.rideOffers.findFirst({
+      where: and(
+        eq(schema.rideOffers.rideId, rideId),
+        eq(schema.rideOffers.driverId, driverId),
+        eq(schema.rideOffers.status, 'PENDING'),
+      ),
+    });
+    return offer ?? null;
+  },
+  async claimOffer(offerId, status) {
+    const rows = await db
+      .update(schema.rideOffers)
+      .set({ status, updatedAt: new Date() })
+      .where(
+        and(
+          eq(schema.rideOffers.id, offerId),
+          eq(schema.rideOffers.status, 'PENDING'),
+        ),
+      )
+      .returning({ id: schema.rideOffers.id });
+    return rows.length > 0;
+  },
+  async revertAcceptedOfferToTimedOut(offerId) {
+    await db
+      .update(schema.rideOffers)
+      .set({ status: 'TIMED_OUT', updatedAt: new Date() })
+      .where(
+        and(
+          eq(schema.rideOffers.id, offerId),
+          eq(schema.rideOffers.status, 'ACCEPTED'),
+        ),
+      );
+  },
+  async findRide(rideId) {
+    const ride = await db.query.rides.findFirst({
+      where: eq(schema.rides.id, rideId),
+    });
+    return ride ?? null;
+  },
+  async applyMatchedIfActive(rideId, driverId) {
+    const rows = await db
+      .update(schema.rides)
+      .set({ status: 'MATCHED', driverId, updatedAt: new Date() })
+      .where(
+        and(
+          eq(schema.rides.id, rideId),
+          inArray(schema.rides.status, [...MATCH_APPLY_STATUSES]),
+        ),
+      )
+      .returning({ id: schema.rides.id });
+    return rows.length > 0;
+  },
+  async completeIfMatched(rideId) {
+    const rows = await db
+      .update(schema.rides)
+      .set({ status: 'COMPLETED', updatedAt: new Date() })
+      .where(
+        and(eq(schema.rides.id, rideId), eq(schema.rides.status, 'MATCHED')),
+      )
+      .returning({ id: schema.rides.id });
+    return rows.length > 0;
+  },
+  async applyNoDriversIfPreMatch(rideId) {
+    const rows = await db
+      .update(schema.rides)
+      .set({ status: 'NO_DRIVERS', updatedAt: new Date() })
+      .where(
+        and(
+          eq(schema.rides.id, rideId),
+          inArray(schema.rides.status, [...NO_DRIVERS_APPLY_STATUSES]),
+        ),
+      )
+      .returning({ id: schema.rides.id });
+    return rows.length > 0;
+  },
+  releaseDriverLock,
+  extendDriverLock,
+  setDriverStatus,
+  async matchingRespond(rideId, driverId, accept) {
+    const matchingRes = await fetch(
+      `${MATCHING_URL}/matches/${rideId}/offers/${driverId}/respond`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ accept }),
+      },
+    );
+    const body = (await matchingRes.json()) as Record<string, unknown>;
+    return { ok: matchingRes.ok, status: matchingRes.status, body };
+  },
+  publish,
+};
 
 /**
  * Mark any still-pending offers on this ride as timed out, release their locks,
@@ -168,33 +274,19 @@ rideApp.get('/rides/:id/offers', async (c) => {
 });
 
 // POST /rides/:id/complete
-// Ends a MATCHED trip: release the driver lock and mark the driver available.
+// Ends a MATCHED trip: flip status first, then release the driver lock.
 rideApp.post('/rides/:id/complete', async (c) => {
   const { id: rideId } = c.req.param();
-  const ride = await db.query.rides.findFirst({ where: eq(schema.rides.id, rideId) });
-  if (!ride) return c.json({ error: 'not found' }, 404);
-
-  if (ride.status === 'COMPLETED') {
-    return c.json({ ride: serializeRide(ride) });
-  }
-  if (ride.status !== 'MATCHED' || !ride.driverId) {
-    return c.json({ error: 'ride is not matched' }, 409);
+  const result = await completeRide(lifecycleDeps, rideId);
+  if (result.httpStatus !== 200) {
+    return c.json(result.body, result.httpStatus as 404 | 409);
   }
 
-  const driverId = ride.driverId;
-  await releaseDriverLock(driverId, rideId);
-  await setDriverStatus(driverId, 'available');
-
-  await db
-    .update(schema.rides)
-    .set({ status: 'COMPLETED', updatedAt: new Date() })
-    .where(eq(schema.rides.id, rideId));
-
-  publish({ type: 'lock.released', rideId, driverId });
-  publish({ type: 'ride.completed', rideId, driverId });
-
-  const updated = await db.query.rides.findFirst({ where: eq(schema.rides.id, rideId) });
-  return c.json({ ride: serializeRide(updated!) });
+  const updated = await db.query.rides.findFirst({
+    where: eq(schema.rides.id, rideId),
+  });
+  if (!updated) return c.json({ error: 'not found' }, 404);
+  return c.json({ ride: serializeRide(updated) });
 });
 
 // POST /rides/:id/offers/:driverId/respond
@@ -204,51 +296,16 @@ rideApp.post(
   async (c) => {
     const { id: rideId, driverId } = c.req.param();
     const { accept } = c.req.valid('json');
-
-    // Guard: only allow transition from PENDING
-    const offer = await db.query.rideOffers.findFirst({
-      where: and(
-        eq(schema.rideOffers.rideId, rideId),
-        eq(schema.rideOffers.driverId, driverId),
-        eq(schema.rideOffers.status, 'PENDING'),
-      ),
-    });
-    if (!offer) {
-      return c.json({ error: 'No pending offer found' }, 404);
-    }
-
-    const newStatus = accept ? 'ACCEPTED' : 'DECLINED';
-    await db
-      .update(schema.rideOffers)
-      .set({ status: newStatus, updatedAt: new Date() })
-      .where(eq(schema.rideOffers.id, offer.id));
-
-    publish({
-      type: accept ? 'offer.accepted' : 'offer.declined',
+    const result = await respondToDriverOffer(
+      lifecycleDeps,
       rideId,
       driverId,
-    });
-
-    // Decline: release the lock, free the driver, and notify.
-    // Accept: lock is extended to 1 h by /internal/rides/:id/matched; driver stays busy.
-    if (!accept) {
-      await releaseDriverLock(driverId, rideId);
-      await setDriverStatus(driverId, 'available');
-      publish({ type: 'lock.released', rideId, driverId });
-    }
-
-    // Forward to Matching Service
-    const matchingRes = await fetch(
-      `${MATCHING_URL}/matches/${rideId}/offers/${driverId}/respond`,
-      {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ accept }),
-      },
+      accept,
     );
-
-    const body = (await matchingRes.json()) as Record<string, unknown>;
-    return c.json(body, matchingRes.ok ? 200 : (matchingRes.status as 422 | 500));
+    return c.json(
+      result.body,
+      result.httpStatus as 200 | 404 | 422 | 500 | 503,
+    );
   },
 );
 
@@ -371,19 +428,14 @@ internal.post(
     const { id: rideId } = c.req.param();
     const { driverId } = c.req.valid('json');
 
-    // Extend the offer-window lock to 1 h until Complete ride releases it.
-    await extendDriverLock(driverId, rideId, MATCHED_LOCK_TTL);
-
-    await db
-      .update(schema.rides)
-      .set({ status: 'MATCHED', driverId, updatedAt: new Date() })
-      .where(eq(schema.rides.id, rideId));
-
-    // Matched driver stays busy and is excluded from future nearby searches.
-    await setDriverStatus(driverId, 'busy');
-
-    publish({ type: 'ride.matched', rideId, driverId });
-    return c.json({ ok: true });
+    // Always 200 so SFN does not retry after a terminal ride (e.g. COMPLETED).
+    const { applied } = await applyRideMatched(
+      lifecycleDeps,
+      rideId,
+      driverId,
+      MATCHED_LOCK_TTL,
+    );
+    return c.json({ ok: true, applied });
   },
 );
 
@@ -394,13 +446,8 @@ internal.post(
   async (c) => {
     const { id: rideId } = c.req.param();
     await expirePendingOffers(rideId);
-    await db
-      .update(schema.rides)
-      .set({ status: 'NO_DRIVERS', updatedAt: new Date() })
-      .where(eq(schema.rides.id, rideId));
-
-    publish({ type: 'ride.no_drivers', rideId });
-    return c.json({ ok: true });
+    const { applied } = await applyNoDrivers(lifecycleDeps, rideId);
+    return c.json({ ok: true, applied });
   },
 );
 
