@@ -54,6 +54,22 @@ export function getBlogTypeFromSlugs(slugs: string[]): BlogType | null {
   return null
 }
 
+export function getActivePersonalCategory(
+  pathname: string,
+  searchCategory?: string,
+): string {
+  if (pathname.startsWith('/personal')) {
+    return searchCategory ?? 'all'
+  }
+
+  if (pathname.startsWith('/blog/personal/')) {
+    const segment = pathname.split('/')[3]
+    if (segment === 'travel' || segment === 'thoughts') return segment
+  }
+
+  return 'all'
+}
+
 export function filterPageTreeForType(tree: unknown, type: BlogType): unknown {
   const root = tree as { name?: unknown; children?: TreeNode[] }
   const folder = root.children?.find(

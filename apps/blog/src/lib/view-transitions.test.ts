@@ -3,6 +3,7 @@ import {
   BLOG_PAGE_TRANSITION,
   BLOG_POST_CLOSE_TRANSITION,
   BLOG_POST_OPEN_TRANSITION,
+  blogPostSplatFromUrl,
   getBlogPostViewTransitionTypes,
   getPostTransitionNames,
   isBlogDetailPath,
@@ -99,5 +100,26 @@ describe('postUrlFromPath', () => {
     expect(postUrlFromPath('/personal/travel/a-week-in-hoi-an')).toBe(
       '/blog/personal/travel/a-week-in-hoi-an',
     )
+  })
+})
+
+describe('blogPostSplatFromUrl', () => {
+  it('strips the /blog/ prefix for router splat params', () => {
+    expect(
+      blogPostSplatFromUrl('/blog/personal/travel/a-week-in-hoi-an'),
+    ).toBe('personal/travel/a-week-in-hoi-an')
+    expect(
+      blogPostSplatFromUrl('/blog/technical/web-development/post'),
+    ).toBe('technical/web-development/post')
+  })
+
+  it('returns undefined for non-blog URLs', () => {
+    expect(blogPostSplatFromUrl('/personal')).toBeUndefined()
+    expect(blogPostSplatFromUrl('https://example.com/blog/post')).toBeUndefined()
+  })
+
+  it('round-trips with postUrlFromPath', () => {
+    const path = 'personal/travel/a-week-in-hoi-an'
+    expect(blogPostSplatFromUrl(postUrlFromPath(path))).toBe(path)
   })
 })
