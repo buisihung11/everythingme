@@ -19,7 +19,7 @@ import PersonalArticleLayout, {
 import { BlogPostTransitionProvider, useBlogPostUrl } from '@/components/BlogPostTransitionContext'
 import {
   filterPageTreeForType,
-  getBlogTypeFromSlugs,
+  validateBlogPageAccess,
 } from '@/lib/blog'
 import { getPostTransitionNames } from '#/lib/view-transitions'
 
@@ -40,12 +40,9 @@ const serverLoader = createServerFn({
 })
   .validator((slugs: string[]) => slugs)
   .handler(async ({ data: slugs }) => {
-    const blogType = getBlogTypeFromSlugs(slugs)
-    if (!blogType) throw notFound()
-
     const page = blogSource.getPage(slugs)
-    if (!page) throw notFound()
-    if (page.data.type !== blogType) throw notFound()
+    const blogType = validateBlogPageAccess(slugs, page)
+    if (!blogType) throw notFound()
 
     if (blogType === 'personal') {
       return {

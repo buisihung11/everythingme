@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
   filterPageTreeForType,
+  getActivePersonalCategory,
   getBlogTypeFromPathname,
   getBlogTypeFromSlugs,
   getDefaultThumbnail,
+  validateBlogPageAccess,
 } from './blog'
 
 describe('getBlogTypeFromPathname', () => {
@@ -30,6 +32,61 @@ describe('getBlogTypeFromSlugs', () => {
   it('returns null when the first slug is not a blog type', () => {
     expect(getBlogTypeFromSlugs(['travel', 'a-week-in-hoi-an'])).toBeNull()
     expect(getBlogTypeFromSlugs([])).toBeNull()
+  })
+})
+
+describe('getActivePersonalCategory', () => {
+  it('uses search category on personal list pages', () => {
+    expect(getActivePersonalCategory('/personal')).toBe('all')
+    expect(getActivePersonalCategory('/personal', 'travel')).toBe('travel')
+    expect(getActivePersonalCategory('/personal/travel')).toBe('all')
+  })
+
+  it('derives category from blog detail paths', () => {
+    expect(
+      getActivePersonalCategory('/blog/personal/travel/a-week-in-hoi-an'),
+    ).toBe('travel')
+    expect(
+      getActivePersonalCategory('/blog/personal/thoughts/reflection'),
+    ).toBe('thoughts')
+  })
+
+  it('falls back to all for unrelated paths or unknown categories', () => {
+    expect(getActivePersonalCategory('/technical')).toBe('all')
+    expect(getActivePersonalCategory('/blog/personal/unknown/post')).toBe('all')
+    expect(getActivePersonalCategory('/blog/technical/web-development/post')).toBe(
+      'all',
+    )
+  })
+})
+
+describe('validateBlogPageAccess', () => {
+  it('returns the blog type when slugs and page metadata agree', () => {
+    expect(
+      validateBlogPageAccess(['personal', 'travel', 'post'], {
+        data: { type: 'personal' },
+      }),
+    ).toBe('personal')
+    expect(
+      validateBlogPageAccess(['technical', 'devops', 'post'], {
+        data: { type: 'technical' },
+      }),
+    ).toBe('technical')
+  })
+
+  it('rejects invalid slugs, missing pages, and type mismatches', () => {
+    expect(validateBlogPageAccess(['travel', 'post'], { data: { type: 'personal' } })).toBeNull()
+    expect(validateBlogPageAccess(['personal', 'travel'], undefined)).toBeNull()
+    expect(
+      validateBlogPageAccess(['personal', 'travel'], {
+        data: { type: 'technical' },
+      }),
+    ).toBeNull()
+    expect(
+      validateBlogPageAccess(['technical', 'devops'], {
+        data: { type: 'personal' },
+      }),
+    ).toBeNull()
   })
 })
 
