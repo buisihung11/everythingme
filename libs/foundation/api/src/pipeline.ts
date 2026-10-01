@@ -38,7 +38,7 @@ export function composePipeline<
         metadata,
         next: (options) =>
           downstream(
-            options?.input ?? input,
+            options && 'input' in options ? options.input : input,
             options?.ctx ? { ...ctx, ...options.ctx } : ctx,
           ),
       });

@@ -18,24 +18,55 @@ export function timeout<TInput, TOutput, TContext extends ApiExecutionContext>({
   return createMiddleware<TInput, TOutput, TContext>(
     ({ ctx, metadata, next }) => {
       const controller = new AbortController();
+      const work = Promise.resolve(
+        next({
+          ctx: { ...ctx, signal: controller.signal } as Partial<TContext>,
+        }),
+      );
+
+      let settled = false;
       const timer = setTimeout(() => controller.abort(), ms);
 
-      const race = Promise.race([
-        next({ ctx: { ...ctx, signal: controller.signal } as Partial<TContext> }),
-        new Promise<never>((_, reject) =>
-          controller.signal.addEventListener('abort', () =>
-            reject(
-              new ApiTimeoutError(
-                ms,
-                metadata.feature as string | undefined,
-                metadata.action as string | undefined,
-              ),
+      return new Promise<TOutput>((resolve, reject) => {
+        const failTimeout = () => {
+          if (settled) return;
+          settled = true;
+          reject(
+            new ApiTimeoutError(
+              ms,
+              metadata.feature as string | undefined,
+              metadata.action as string | undefined,
             ),
-          ),
-        ),
-      ]);
+          );
+        };
 
-      return race.finally(() => clearTimeout(timer));
+        controller.signal.addEventListener('abort', failTimeout, { once: true });
+
+        // Always attach fulfillment/rejection handlers so a late abort from
+        // the handler cannot become an unhandledRejection after timeout wins.
+        work.then(
+          (value) => {
+            if (settled) return;
+            if (controller.signal.aborted) {
+              failTimeout();
+              return;
+            }
+            settled = true;
+            resolve(value);
+          },
+          (err) => {
+            if (settled) return;
+            // Handler rejected because we aborted — keep the documented
+            // ApiTimeoutError rather than leaking AbortError/DOMException.
+            if (controller.signal.aborted) {
+              failTimeout();
+              return;
+            }
+            settled = true;
+            reject(err);
+          },
+        );
+      }).finally(() => clearTimeout(timer));
     },
   );
 }
