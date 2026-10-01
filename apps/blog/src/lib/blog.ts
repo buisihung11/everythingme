@@ -72,6 +72,26 @@ export function filterPageTreeForType(tree: unknown, type: BlogType): unknown {
   }
 }
 
+export function getActivePersonalCategory(
+  pathname: string,
+  searchCategory?: string,
+): string {
+  if (pathname.startsWith('/personal')) {
+    return searchCategory ?? 'all'
+  }
+
+  if (pathname.startsWith('/blog/personal/')) {
+    const segment = pathname.split('/')[3]
+    if (segment === 'travel' || segment === 'thoughts') return segment
+  }
+
+  return 'all'
+}
+
+export function blogPostSplatFromUrl(url: string): string | undefined {
+  return url.startsWith('/blog/') ? url.replace('/blog/', '') : undefined
+}
+
 export function getDefaultThumbnail(type: BlogType, category: string): string {
   if (type === 'personal') {
     if (category === 'travel') return '/thumbnails/personal-travel.svg'
