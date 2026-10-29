@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1920, height=1080" />
+<!-- one-studio scene s02 (diagram). Edit content and the timeline only; styles come from brand tokens. -->
+<link rel="stylesheet" href="../assets/brand.css" />
+<link rel="stylesheet" href="../assets/os.css" />
+<script src="../assets/vendor/gsap.min.js"></script>
+<script src="../assets/brand.js"></script>
+<!-- studio preview of storyboard SFX cues (never in renders; the final mix is FFmpeg's) -->
+<script src="../assets/vendor/howler.core.min.js"></script>
+<script src="../assets/audio-cues.js"></script>
+<script src="../assets/os.js"></script>
+</head>
+<body>
+<div id="root" class="os-scene" data-composition-id="s02" data-start="0" data-duration="9" data-width="1920" data-height="1080"
+     data-transition-in="fade" data-transition-out="fade" data-transition-duration="0.4"
+     style="--w: 1920px; --h: 1080px">
+  <div class="os-frame clip" data-start="0" data-duration="9" data-track-index="0">
+    <style>
+      .eyebrow { font-family: var(--font-mono); font-size: calc(var(--fs-small) * var(--u)); color: var(--c-muted); letter-spacing: 0.16em; text-transform: uppercase; }
+      .tag { display: inline-block; font-family: var(--font-mono); font-size: calc(var(--fs-small) * var(--u)); padding: calc(6 * var(--u)) calc(18 * var(--u)); border-radius: calc(999 * var(--u)); border: calc(2 * var(--u)) solid currentColor; margin-bottom: calc(20 * var(--u)); }
+      .code { font-family: var(--font-mono); font-size: calc(30 * var(--u)); line-height: 1.5; white-space: pre; }
+      .k { color: var(--c-primary); } .v { color: var(--c-secondary); } .hl { color: var(--c-accent); } .m { color: var(--c-muted); }
+      .os-row { align-items: stretch; }
+      .chips { display: flex; gap: calc(14 * var(--u)); margin-top: calc(28 * var(--u)); }
+      .chip { font-family: var(--font-mono); font-size: calc(var(--fs-small) * var(--u)); padding: calc(8 * var(--u)) calc(16 * var(--u)); border-radius: calc(12 * var(--u)); border: calc(2 * var(--u)) solid var(--c-primary); color: var(--c-primary); }
+      .graph { width: 100%; height: calc(200 * var(--u)); margin-top: calc(16 * var(--u)); }
+      .graph text { font-family: var(--font-mono); font-size: 26px; fill: var(--c-fg); }
+      .graph .n { fill: none; stroke: var(--c-secondary); stroke-width: 3; }
+      .graph .e { fill: none; stroke: var(--c-secondary); stroke-width: 3; }
+      .graph .hot { stroke: var(--c-accent); stroke-width: 4; opacity: 0; }
+      .note { margin-top: calc(16 * var(--u)); font-size: calc(var(--fs-small) * var(--u)); color: var(--c-muted); }
+    </style>
+    <div class="eyebrow">Mental model</div>
+    <h2 class="os-h2">Snapshot <span class="os-muted">vs</span> tracking</h2>
+    <div class="os-row">
+      <div class="os-card" data-line="s02-1" data-at="0.4">
+        <div class="tag os-primary">React</div>
+<div class="code"><span class="k">function</span> Counter() {
+  <span class="k">const</span> [count, setCount] = <span class="k">useState</span>(0)
+  <span class="k">return</span> &lt;p&gt;{count}&lt;/p&gt;
+}</div>
+        <div class="chips"><span class="chip">render #1</span><span class="chip">render #2</span><span class="chip">render #3</span></div>
+        <div class="note">Each update re-runs the function with a new snapshot</div>
+      </div>
+      <div class="os-card" data-line="s02-2" data-at="3.0">
+        <div class="tag os-secondary">Vue</div>
+<div class="code"><span class="k">const</span> count = <span class="v">ref</span>(0)
+<span class="k">const</span> double = <span class="v">computed</span>(() =&gt;
+  count.<span class="hl">value</span> * 2)</div>
+        <svg class="graph" viewBox="0 0 700 200" xmlns="http://www.w3.org/2000/svg">
+          <rect class="n" x="10" y="70" width="170" height="60" rx="14" />
+          <text x="95" y="109" text-anchor="middle">count</text>
+          <path class="e" d="M180 100 C 260 100, 280 40, 360 40" />
+          <path class="e" d="M180 100 C 260 100, 280 160, 360 160" />
+          <rect class="n" x="360" y="10" width="320" height="60" rx="14" />
+          <text x="520" y="49" text-anchor="middle">template</text>
+          <rect class="n" x="360" y="130" width="320" height="60" rx="14" />
+          <text x="520" y="169" text-anchor="middle">double</text>
+          <rect class="n hot" x="10" y="70" width="170" height="60" rx="14" />
+          <rect class="n hot" x="360" y="10" width="320" height="60" rx="14" />
+          <rect class="n hot" x="360" y="130" width="320" height="60" rx="14" />
+        </svg>
+        <div class="note">Reads are tracked; only dependents update</div>
+      </div>
+    </div>
+  </div>
+</div>
+<script type="application/json" id="os-lines">{"s02-1":{"start":0.3,"end":2.172},"s02-2":{"start":2.422,"end":6.245}}</script>
+<script>
+  const S = OS.scene("s02");
+  S.enter(".eyebrow, .os-h2", { at: 0.1, kind: "fade", stagger: 0.1 });
+  S.lines();
+  const t1 = S.line("s02-1", 0.4);
+  const t2 = S.line("s02-2", 3.0);
+  S.enter(".chip", { at: t1 + 0.6, kind: "pop", stagger: 0.35 });
+  S.draw(".graph .e", { at: t2 + 0.8, dur: 0.8, stagger: 0.2 });
+  S.tl.to(".graph .hot", { opacity: 1, duration: 0.3, stagger: 0.15 }, t2 + 1.8);
+  S.done();
+</script>
+</body>
+</html>

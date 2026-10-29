@@ -1,0 +1,111 @@
+WEBVTT
+
+00:00.300 --> 00:01.688
+You already know React.
+
+00:01.938 --> 00:04.428
+The biggest shift in Vue is
+how state changes propagate.
+
+00:07.800 --> 00:09.672
+React renders with a state snapshot.
+
+00:09.922 --> 00:13.745
+Vue tracks reactive reads and updates
+the effects that depend on them.
+
+00:16.800 --> 00:18.282
+A ref holds a mutable value.
+
+00:18.532 --> 00:22.137
+In script, access dot value;
+top-level refs unwrap in templates.
+
+00:25.300 --> 00:27.203
+Use computed for pure derived state.
+
+00:27.453 --> 00:30.583
+Use watch for side effects,
+and clean up stale requests.
+
+00:33.800 --> 00:36.782
+Props, events, and slots
+define component contracts.
+
+00:37.032 --> 00:40.557
+Composables share behavior; Pinia
+can manage shared client state.
+
+00:42.300 --> 00:45.137
+Named slots are like children
+and element props in React.
+
+00:45.387 --> 00:47.862
+The parent chooses content;
+the child owns layout.
+
+00:51.300 --> 00:53.283
+Scoped slots resemble render props.
+
+00:53.533 --> 00:57.230
+The list handles iteration while its
+consumer chooses how each item appears.
+
+01:00.300 --> 01:02.893
+Composables reuse reactive
+behavior without markup.
+
+01:03.143 --> 01:07.313
+Separate calls create independent state
+when that state lives inside the function.
+
+01:09.300 --> 01:11.610
+Compound components can
+use provide and inject.
+
+01:11.860 --> 01:15.221
+Keep state ownership explicit
+and expose actions for updates.
+
+01:17.800 --> 01:20.785
+Compose entity display and
+feature actions in a higher layer.
+
+01:21.035 --> 01:23.655
+The task card should not depend
+on the completion feature.
+
+01:27.800 --> 01:30.029
+Feature-Sliced Design applies to Vue too.
+
+01:30.279 --> 01:35.068
+Organize by responsibility and expose
+public APIs rather than importing internal
+
+01:35.068 --> 01:35.427
+files.
+
+01:36.800 --> 01:39.517
+Across slices, dependencies
+point to lower layers.
+
+01:39.767 --> 01:42.270
+A page or widget coordinates
+sibling features.
+
+01:44.300 --> 01:45.211
+Start small.
+
+01:45.461 --> 01:50.038
+Extract features when behavior is reused,
+and keep one-page behavior local until a
+
+01:50.038 --> 01:51.378
+useful boundary emerges.
+
+01:54.800 --> 01:58.623
+Build a small task app, then add routing,
+tests, and performance profiling.
+
+01:58.873 --> 02:00.899
+The accompanying blog explains each step.

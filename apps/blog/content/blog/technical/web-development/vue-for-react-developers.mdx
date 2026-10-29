@@ -1,0 +1,451 @@
+---
+title: Vue 3 for Senior React Developers
+description: Learn Vue through React comparisons, component composition patterns, composables, and Feature-Sliced Design with practical code examples.
+date: 2026-10-29
+type: technical
+category: web-development
+readTime: 25
+thumbnail: /thumbnails/technical-web.svg
+---
+
+Vue and React solve many of the same problems, but they encourage different mental models. This guide focuses on the differences that matter when you already know component composition, hooks, state management, and frontend architecture.
+
+## Watch first: the two-minute overview
+
+Start with the video for the map, then use the sections below for the code and trade-offs behind each scene.
+
+<video
+  controls
+  preload="metadata"
+  playsInline
+  poster="/videos/vue-for-react-developers/poster.jpg"
+  style={{ width: '100%', aspectRatio: '16 / 9', borderRadius: '0.75rem' }}
+>
+  <source src="/videos/vue-for-react-developers/vue-for-react-developers.mp4" type="video/mp4" />
+  <track kind="captions" src="/videos/vue-for-react-developers/captions.en.vtt" srcLang="en" label="English" default />
+</video>
+
+| Time | Chapter | Read more |
+| --- | --- | --- |
+| 0:00 | Snapshot versus tracking, refs | [The mental model](#the-mental-model) |
+| 0:25 | `computed` and `watch` | [Derived state, effects, and cleanup](#derived-state-effects-and-cleanup) |
+| 0:33 | Props, events, and slots | [Component contracts](#component-contracts) |
+| 0:42 | Named slots, scoped slots, composables, provide/inject | [Composition patterns](#designing-components-composition-patterns-from-react-to-vue) |
+| 1:17 | Composing in a higher layer, Feature-Sliced Design, import rules | [Feature-Sliced Design](#feature-sliced-design-in-a-vue-application) |
+| 1:54 | Study plan | [A five-session learning plan](#a-five-session-learning-plan) |
+
+## The mental model
+
+A React function component is called again when it renders. Its state is a snapshot for that render. In Vue's Composition API, `setup` runs once per component instance; reactive reads made by rendering, computed values, and effects establish dependencies. Vue tracks those dependencies and schedules updates when they change. Both frameworks use virtual DOM rendering, but Vue's compiler can also provide optimization hints based on the template.
+
+| React | Vue 3 | Important distinction |
+| --- | --- | --- |
+| Function component and JSX | Single-file component (SFC), template and `script setup` | Vue also supports render functions and JSX. |
+| `useState` | `ref` or `reactive` | Vue state is mutable and reactive; a ref is accessed via `.value` in script. |
+| Derived value or `useMemo` | `computed` | Dependencies are tracked automatically; computed values are cached. |
+| `useEffect` | `watch`, `watchEffect`, lifecycle hooks | They are not interchangeable: choose by what triggers the work and when it runs. |
+| Custom hook | Composable, such as `useSearch` | A composable can create reactive state and register lifecycle hooks. |
+| Context | `provide` / `inject` | Both pass values through the component tree; Vue can pass reactive values. |
+| Shared client store | Pinia | Keep remote server state in an appropriate data-fetching cache. |
+
+## A component in practice
+
+```vue
+<script setup lang="ts">
+import { computed, ref } from 'vue'
+
+interface Task { id: string; title: string; done: boolean }
+
+const tasks = ref<Task[]>([
+  { id: '1', title: 'Learn Vue reactivity', done: false },
+])
+const query = ref('')
+const visibleTasks = computed(() => {
+  const text = query.value.toLowerCase().trim()
+  return tasks.value.filter(task => task.title.toLowerCase().includes(text))
+})
+
+function toggle(id: string) {
+  const task = tasks.value.find(item => item.id === id)
+  if (task) task.done = !task.done
+}
+</script>
+
+<template>
+  <label>
+    Search tasks
+    <input v-model="query" />
+  </label>
+  <ul>
+    <li v-for="task in visibleTasks" :key="task.id">
+      <button @click="toggle(task.id)">
+        {{ task.done ? 'Done' : 'Open' }}: {{ task.title }}
+      </button>
+    </li>
+  </ul>
+</template>
+```
+
+`ref` exposes its value through `.value` in JavaScript. Top-level refs are automatically unwrapped in templates. The `computed` getter tracks `query` and `tasks`; it should stay pure. `v-model` connects form input and state, while `v-for` and `:key` give Vue the identity needed to reconcile a list.
+
+## Reactivity and common traps
+
+`reactive` returns a proxy for an object; `ref` wraps a value and is convenient when a value may be replaced. Vue generally tracks property access through the proxy, so destructuring a primitive property from a reactive object breaks its connection to that property. Use `toRef` or `toRefs` where a reactive reference must survive destructuring. Vue also batches DOM updates: use `await nextTick()` when code must inspect the updated DOM immediately after a mutation.
+
+A composable creates state per call if the state is declared inside the function. State declared at module scope is shared across calls. That distinction matters for isolation, testing, and server-side rendering: a module-level singleton can accidentally share user data across requests.
+
+## Derived state, effects, and cleanup
+
+Use `computed` for pure derived data. Use `watch` when an explicit source should trigger a side effect, and `watchEffect` when automatic dependency tracking is useful. Unlike React effect dependencies, a watcher's sources can be expressed directly. Watch callbacks are normally batched; select an appropriate flush timing only when needed.
+
+```ts
+import { ref, watch } from 'vue'
+
+const userId = ref('1')
+const user = ref<unknown>(null)
+const error = ref<Error | null>(null)
+
+watch(userId, async (id, _oldId, onCleanup) => {
+  const controller = new AbortController()
+  onCleanup(() => controller.abort())
+  error.value = null
+  try {
+    const response = await fetch(`/api/users/${id}`, { signal: controller.signal })
+    if (!response.ok) throw new Error(`Request failed: ${response.status}`)
+    const result = await response.json()
+    if (!controller.signal.aborted) user.value = result
+  } catch (cause) {
+    if (!controller.signal.aborted) error.value = cause instanceof Error ? cause : new Error(String(cause))
+  }
+}, { immediate: true })
+```
+
+The cleanup prevents a previous request from updating state after the ID changes. In production, prefer a server-state library when you need caching, deduplication, retries, or invalidation. In an async `watchEffect`, automatic dependency collection only covers reads during synchronous execution, before the first `await`.
+
+## Component contracts
+
+Use typed `defineProps` and `defineEmits` to make component boundaries explicit. Props flow down; events express intent to the parent. Slots provide composition, including scoped slots when the child exposes data to the parent. `v-model` on a component represents a prop and an update event, so it still has an explicit contract.
+
+```vue
+<script setup lang="ts">
+defineProps<{ title: string; completed: boolean }>()
+const emit = defineEmits<{ toggle: [] }>()
+</script>
+
+<template>
+  <button :aria-pressed="completed" @click="emit('toggle')">{{ title }}</button>
+</template>
+```
+
+Keep ownership clear: do not directly mutate a prop. Use events, a model contract, or a store action to request a change.
+
+## Designing components: composition patterns from React to Vue
+
+Vue's **Composition API** is the API for organizing reactive logic. **Component composition** is how components collaborate through props, events, slots, and context. They solve related problems at different levels: using `script setup` alone does not give an application good boundaries.
+
+| Pattern you know in React | Vue equivalent | Choose it when |
+| --- | --- | --- |
+| `children` and element props | Default and named slots | The parent should choose content inside a reusable layout. |
+| Render props | Scoped slots | The child owns behavior or iteration; the parent chooses rendering using child-provided data. |
+| Custom hooks | Composables | Multiple views need reactive behavior without sharing markup. |
+| Compound components with Context | Related components using `provide` / `inject` | Descendants need a common owner, such as an accordion group or form. |
+| Controlled component | Props and emitted update events; component `v-model` | The parent owns the value and coordinates changes. |
+| Container / presentational components | Feature controller plus props/events-driven view | API orchestration and reusable visual behavior change independently. |
+| Higher-order component | Often a composable plus a wrapper or slot | Separate logic reuse from visual decoration instead of mechanically porting the HOC. |
+
+These are design choices rather than requirements. Start with a normal component; extract a boundary when it has a clear contract or reason to change.
+
+### 1. Named slots: compose layout without business coupling
+
+Suppose a reusable panel needs a heading, body, and actions. It should not know whether those actions edit a task or archive a project.
+
+```vue
+<!-- shared/ui/PanelCard.vue -->
+<template>
+  <section class="panel">
+    <header><slot name="heading" /></header>
+    <div class="panel-body"><slot /></div>
+    <footer v-if="$slots.actions"><slot name="actions" /></footer>
+  </section>
+</template>
+```
+
+The parent supplies the behavior and content, much like passing React elements through `children` and named props:
+
+```vue
+<!-- Inside a parent template; components and handlers imported in its script -->
+<PanelCard>
+  <template #heading><h2>Pending tasks</h2></template>
+  <TaskList :tasks="tasks" />
+  <template #actions>
+    <button type="button" @click="createTask">Create task</button>
+  </template>
+</PanelCard>
+```
+
+Keep visual extension points as slots rather than adding a growing set of flags such as `showCreate`, `showArchive`, and `isAdminPanel`. Slot expressions use the parent's scope; child-local data must be exposed explicitly through slot props. See [Vue slots](https://vuejs.org/guide/components/slots).
+
+### 2. Scoped slots: the render-prop pattern
+
+Here a list owns iteration and empty-state structure, while the consumer owns item rendering. This example uses Vue 3.3+ generic SFC syntax and typed slots.
+
+```vue
+<!-- shared/ui/ItemList.vue -->
+<script setup lang="ts" generic="T extends { id: string }">
+defineProps<{ items: readonly T[] }>()
+defineSlots<{
+  item(props: { item: T; index: number }): unknown
+  empty(): unknown
+}>()
+</script>
+
+<template>
+  <ul v-if="items.length">
+    <li v-for="(item, index) in items" :key="item.id">
+      <slot name="item" :item="item" :index="index" />
+    </li>
+  </ul>
+  <div v-else><slot name="empty">No items.</slot></div>
+</template>
+```
+
+```vue
+<!-- Parent template fragment -->
+<ItemList :items="tasks">
+  <template #item="{ item }">
+    <TaskCard :task="item" />
+  </template>
+  <template #empty><p>No tasks match your search.</p></template>
+</ItemList>
+```
+
+The React analogy is `renderItem={(item) => <TaskCard task={item} />}`. Prefer a composable if there is no meaningful DOM structure to reuse; renderless components add another component instance. For SFC typing details, see [script setup](https://vuejs.org/api/sfc-script-setup.html).
+
+### 3. Composables: separate behavior from presentation
+
+A filter is useful in both a list and a board, so extract its state and derivation. Accept a ref or getter to preserve reactivity when the caller replaces the task array. `toValue` requires Vue 3.3+.
+
+```ts
+// model/useTaskFilter.ts — in the slice that owns this behavior
+import { computed, ref, toValue, type MaybeRefOrGetter } from 'vue'
+
+type FilterableTask = { title: string; done: boolean }
+
+export function useTaskFilter<T extends FilterableTask>(
+  source: MaybeRefOrGetter<readonly T[]>,
+) {
+  const query = ref('')
+  const onlyOpen = ref(false)
+  const visibleTasks = computed(() => {
+    const needle = query.value.trim().toLowerCase()
+    return toValue(source).filter(task =>
+      (!onlyOpen.value || !task.done) &&
+      task.title.toLowerCase().includes(needle),
+    )
+  })
+  return { query, onlyOpen, visibleTasks }
+}
+```
+
+Use it in setup as `useTaskFilter(() => props.tasks)`. Passing `props.tasks` directly captures the current array rather than tracking later prop replacement. Each call creates independent filter state. Returning an ordinary object containing refs lets the caller destructure the result while retaining reactivity.
+
+Keep lifecycle-dependent composables in synchronous setup context so Vue can associate hooks and cleanup with the component. Do not treat a composable as a service locator that silently imports every application store. See [Vue composables](https://vuejs.org/guide/reusability/composables).
+
+### 4. Compound components: give a family one state owner
+
+Consider `SelectionGroup` and `SelectionOption`. A typed injection key lets options access the nearest group's selected value and action, even through layout wrappers. This is similar to a React compound component backed by Context.
+
+```ts
+// selection-context.ts — private to this component family
+import { inject, type InjectionKey, type Ref } from 'vue'
+
+export interface SelectionContext {
+  selected: Readonly<Ref<string>>
+  select(value: string): void
+}
+
+export const selectionKey: InjectionKey<SelectionContext> = Symbol('selection')
+
+export function useSelection() {
+  const context = inject(selectionKey)
+  if (!context) throw new Error('SelectionOption requires SelectionGroup')
+  return context
+}
+```
+
+```vue
+<!-- SelectionGroup.vue -->
+<script setup lang="ts">
+import { provide, readonly, ref } from 'vue'
+import { selectionKey } from './selection-context'
+
+const selected = ref('')
+provide(selectionKey, {
+  selected: readonly(selected),
+  select: value => { selected.value = value },
+})
+</script>
+
+<template><div><slot /></div></template>
+```
+
+```vue
+<!-- SelectionOption.vue -->
+<script setup lang="ts">
+import { useSelection } from './selection-context'
+
+defineProps<{ value: string }>()
+const { selected, select } = useSelection()
+</script>
+
+<template>
+  <button type="button" :aria-pressed="selected === value" @click="select(value)">
+    <slot />
+  </button>
+</template>
+```
+
+```vue
+<!-- Parent template fragment -->
+<SelectionGroup>
+  <SelectionOption value="list">List</SelectionOption>
+  <SelectionOption value="board">Board</SelectionOption>
+</SelectionGroup>
+```
+
+This is an illustrative toggle-button group, not a complete tabs or radio-group implementation. Those widgets require their own keyboard and focus behavior. If the parent needs to control selection, replace the group's local state with an explicit model contract. Keep mutations with the provider and expose actions; use Pinia only if the state truly belongs beyond this subtree. See [provide/inject](https://vuejs.org/guide/components/provide-inject).
+
+### 5. Decide ownership before extracting a component
+
+For a task screen, I would use these boundaries:
+
+| Unit | Owns | Receives or exposes |
+| --- | --- | --- |
+| `TasksPage` | Route context and page composition | Route params and page-level orchestration |
+| `TaskWorkspace` | Coordination of reusable task UI and actions | Task collection and loading/error presentation |
+| `TaskCard` | Display of one task | Task prop; actions slot |
+| `CompleteTaskButton` | Completion action, pending state, error feedback | Task ID; completion notification |
+| `PanelCard` | Generic visual structure | Named slots |
+
+Extract a component when it has independent behavior, meaningful reuse, accessibility responsibility, or a useful testing boundary. A single wrapper element does not automatically need its own file. Keep one-off page behavior local until another consumer or a clear complexity boundary justifies moving it.
+
+## Project architecture
+
+For a production application, organize by feature where it improves ownership: group a feature's components, composables, API functions, and tests together. Keep application-wide UI, routing, and configuration in shared locations. Avoid making every reactive value global.
+
+- **Routing:** use Vue Router for route matching, nested layouts, navigation, and guards. Authorization must still be enforced by the server.
+- **Client state:** use local refs for local UI and Pinia for shared client state when a store adds value. Use `storeToRefs` when destructuring reactive store state or getters.
+- **Server state:** use a query library such as TanStack Query for Vue when caching and synchronization justify it; avoid copying remote data into a global store without a reason.
+- **Composables:** extract reusable behavior around a clear responsibility. Document whether a composable creates its own state or shares it.
+- **TypeScript:** use typed props, events, API responses, and route boundaries. Runtime validation remains necessary for untrusted external data.
+- **SSR:** create request-specific application and store instances. Check browser-only APIs and hydration assumptions.
+
+## Feature-Sliced Design in a Vue application
+
+Feature-Sliced Design (FSD) organizes dependencies, not Vue syntax. An SFC, composable, or Pinia store belongs with the business responsibility it implements. A global `components/`, `composables/`, and `stores/` arrangement groups files by technology but can scatter one feature across the repository.
+
+**Layer** describes architectural responsibility; **slice** identifies a business boundary; **segment** groups work by purpose inside that boundary. In `features/complete-task/model/useCompleteTask.ts`, those are `features`, `complete-task`, and `model` respectively.
+
+### A concrete task-management structure
+
+The paths below are an illustrative design, not additional files installed by this article. `@/` assumes an alias to `src` in your bundler and TypeScript configuration.
+
+| Layer | Example paths under `src/` | Responsibility |
+| --- | --- | --- |
+| `app` | `app/router/index.ts`, `app/providers/pinia.ts`, `app/App.vue` | Bootstrap, router registration, application providers |
+| `pages` | `pages/tasks/ui/TasksPage.vue`, `pages/tasks/index.ts` | Route-level composition and page-only behavior |
+| `widgets` | `widgets/task-workspace/ui/TaskWorkspace.vue`, `widgets/task-workspace/index.ts` | A substantial task workspace reused across screens |
+| `features` | `features/complete-task/ui/CompleteTaskButton.vue`, `features/complete-task/model/useCompleteTask.ts`, `features/complete-task/api/completeTask.ts`, `features/complete-task/index.ts` | The user action of completing a task |
+| `entities` | `entities/task/model/types.ts`, `entities/task/ui/TaskCard.vue`, `entities/task/index.ts` | Task identity, types, and reusable task representation |
+| `shared` | `shared/ui/PanelCard.vue`, `shared/ui/index.ts`, `shared/api/client.ts`, `shared/api/index.ts` | General UI and transport infrastructure |
+
+You do not need every layer. `app` and `shared` use segments directly; the other layers have business slices. This example assumes completion and the workspace have multiple consumers. If they only belong to one screen, initially keep them in `pages/tasks` instead. See the [FSD overview](https://feature-sliced.design/docs/get-started/overview) and [layer guidance](https://feature-sliced.design/docs/reference/layers).
+
+### Import boundaries make the architecture real
+
+Within a slice, use ordinary relative imports between its segments. Across slices, dependencies point to lower layers: pages may use widgets, features, entities, and shared; features may use entities and shared. Avoid same-layer slice dependencies such as `complete-task` importing `delete-task`; coordinate them in a widget or page above both.
+
+```ts
+// features/complete-task/index.ts: the feature's public API
+export { default as CompleteTaskButton } from './ui/CompleteTaskButton.vue'
+
+// entities/task/index.ts
+export { default as TaskCard } from './ui/TaskCard.vue'
+export type { Task } from './model/types'
+```
+
+Consumers import these public entries rather than another slice's internal files. Internal code should not import its own barrel, which can create circular imports. Export the smallest useful contract; a public API does not need to expose every composable. See [slices and segments](https://feature-sliced.design/docs/reference/slices-segments).
+
+A widget composes an entity's display with a feature action using a slot:
+
+```vue
+<!-- widgets/task-workspace/ui/TaskWorkspace.vue -->
+<script setup lang="ts">
+import { TaskCard, type Task } from '@/entities/task'
+import { CompleteTaskButton } from '@/features/complete-task'
+
+defineProps<{ tasks: readonly Task[] }>()
+const emit = defineEmits<{ completed: [taskId: string] }>()
+</script>
+
+<template>
+  <TaskCard v-for="task in tasks" :key="task.id" :task="task">
+    <template #actions>
+      <CompleteTaskButton
+        :task-id="task.id"
+        @completed="emit('completed', task.id)"
+      />
+    </template>
+  </TaskCard>
+</template>
+```
+
+Here `TaskCard` declares an `actions` slot. `CompleteTaskButton` accepts `taskId` and emits `completed` after a successful mutation. The snippet shows their composition contract, not a complete network implementation. The entity stays independent of the completion feature, and a higher layer chooses which actions appear.
+
+When completion succeeds, choose one owner for cache synchronization: for example, the feature updates or invalidates entity-owned task queries, or the page responds to `completed` and refreshes its query. Avoid doing both accidentally. Query-key definitions should be accessible from a permitted lower layer, not imported from the page into the feature.
+
+### Place state and services by responsibility
+
+| Concern | Suggested location | Why |
+| --- | --- | --- |
+| Search text used on one screen | Local page component or `pages/tasks/model` | Page-specific state has no application-wide owner. |
+| Completion mutation and pending/error state | `features/complete-task/model` and `api` | These support one business action. |
+| Reused task query and task types | `entities/task/api` and `model` | Multiple higher-level consumers use the same task contract. |
+| Generic HTTP client | `shared/api` | Transport should not import a business feature. |
+| Element measurement composable | `shared/ui` or a focused `shared/lib` module | Its behavior is independent of tasks. |
+| Pinia instance registration | `app/providers` | Bootstrap wires dependencies together. |
+
+A Pinia store definition can live in its owning entity or feature's `model` segment; installation of Pinia remains in `app`. FSD boundaries do not determine state lifetime. Local refs, component-scoped injection, a global client store, and request-scoped SSR state still require separate decisions.
+
+Tests should stay close to their owner: component contracts near `ui`, state transitions near `model`, and mapping/network behavior near `api`. Add lint restrictions or architecture checks for forbidden layer imports and deep imports when the team adopts these boundaries; naming folders alone does not enforce them.
+
+### Adopt incrementally
+
+Start a small Vue app with `app`, `pages`, and `shared`. Extract a task entity when its contract is reused. Extract a completion feature when the same user action appears across screens. Introduce a widget when a substantial assembled UI block deserves its own reusable boundary. Keep simple one-page flows together.
+
+My recommended review questions are: Who owns this state? What may import this module? What does its public API promise? Does the abstraction reduce duplicated behavior or just add navigation? These questions apply equally when reviewing React and Vue systems.
+
+## Testing and performance
+
+Test observable behavior: render a component, interact with it, and assert what a user can see. Unit-test pure transformations and composables; use component tests for props, events, accessibility and user interactions; cover important routes and integrations with a small number of end-to-end tests. Vue Test Utils or Testing Library with Vitest can support component tests. Mock network boundaries, not the behavior under test.
+
+For performance, measure first. Inspect unnecessary updates, large lists, expensive computations, and bundle size with browser profiling and Vue DevTools. `computed` caches derived results, but avoid assuming every `computed` or `watch` is free. Consider list virtualization for large collections and lazy loading at meaningful route or feature boundaries.
+
+## A five-session learning plan
+
+1. **Reactivity:** implement a task list with `ref`, `reactive`, `computed`, and `watch`; explain what happens after each mutation.
+2. **Components:** extract task items with typed props and emits; build a reusable list with a scoped slot and a provider-based component family.
+3. **Application flow:** add Vue Router and a Pinia store; distinguish local UI state from remote API state; structure the task app with page and feature boundaries.
+4. **Quality:** add component tests, network mocks, and one end-to-end journey; verify error and loading states.
+5. **Senior review:** profile the list, inspect bundle splitting, review accessibility and SSR risks, and document trade-offs.
+
+## Official references
+
+- [Vue reactivity fundamentals](https://vuejs.org/guide/essentials/reactivity-fundamentals)
+- [Computed properties](https://vuejs.org/guide/essentials/computed) and [watchers](https://vuejs.org/guide/essentials/watchers)
+- [Component props](https://vuejs.org/guide/components/props), [events](https://vuejs.org/guide/components/events), and [slots](https://vuejs.org/guide/components/slots)
+- [Vue Router](https://router.vuejs.org/) and [Pinia](https://pinia.vuejs.org/)
+- [Vue testing guide](https://vuejs.org/guide/scaling-up/testing) and [TypeScript with the Composition API](https://vuejs.org/guide/typescript/composition-api)
+
+- [Vue composables](https://vuejs.org/guide/reusability/composables), [provide/inject](https://vuejs.org/guide/components/provide-inject), and [SFC script setup](https://vuejs.org/api/sfc-script-setup.html)
+- [Feature-Sliced Design overview](https://feature-sliced.design/docs/get-started/overview), [layers](https://feature-sliced.design/docs/reference/layers), and [public APIs](https://feature-sliced.design/docs/reference/public-api)

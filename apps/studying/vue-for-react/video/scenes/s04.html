@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1920, height=1080" />
+<!-- one-studio scene s04 (diagram). Edit content and the timeline only; styles come from brand tokens. -->
+<link rel="stylesheet" href="../assets/brand.css" />
+<link rel="stylesheet" href="../assets/os.css" />
+<script src="../assets/vendor/gsap.min.js"></script>
+<script src="../assets/brand.js"></script>
+<!-- studio preview of storyboard SFX cues (never in renders; the final mix is FFmpeg's) -->
+<script src="../assets/vendor/howler.core.min.js"></script>
+<script src="../assets/audio-cues.js"></script>
+<script src="../assets/os.js"></script>
+</head>
+<body>
+<div id="root" class="os-scene" data-composition-id="s04" data-start="0" data-duration="8.5" data-width="1920" data-height="1080"
+     data-transition-in="fade" data-transition-out="fade" data-transition-duration="0.4"
+     style="--w: 1920px; --h: 1080px">
+  <div class="os-frame clip" data-start="0" data-duration="8.5" data-track-index="0">
+    <style>
+      .eyebrow { font-family: var(--font-mono); font-size: calc(var(--fs-small) * var(--u)); color: var(--c-muted); letter-spacing: 0.16em; text-transform: uppercase; }
+      .head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: calc(18 * var(--u)); }
+      .head .os-h2 { font-size: calc(52 * var(--u)); }
+      .twin { font-family: var(--font-mono); font-size: calc(var(--fs-small) * var(--u)); color: var(--c-primary); }
+      .code { font-family: var(--font-mono); font-size: calc(27 * var(--u)); line-height: 1.5; white-space: pre; }
+      .k { color: var(--c-primary); } .v { color: var(--c-secondary); } .hl { color: var(--c-accent); } .m { color: var(--c-muted); }
+      .os-row { align-items: stretch; }
+      .reqs { display: flex; gap: calc(14 * var(--u)); margin-top: calc(24 * var(--u)); font-family: var(--font-mono); font-size: calc(var(--fs-small) * var(--u)); }
+      .req { position: relative; padding: calc(8 * var(--u)) calc(16 * var(--u)); border-radius: calc(12 * var(--u)); border: calc(2 * var(--u)) solid var(--c-muted); color: var(--c-muted); }
+      .req.ok { border-color: var(--c-secondary); color: var(--c-secondary); }
+      .req .strike { position: absolute; left: calc(8 * var(--u)); right: calc(8 * var(--u)); top: 50%; height: calc(4 * var(--u)); background: var(--c-accent); transform-origin: 0 50%; }
+      .note { margin-top: calc(20 * var(--u)); font-size: calc(var(--fs-small) * var(--u)); color: var(--c-muted); }
+    </style>
+    <div class="eyebrow">Derived state and effects</div>
+    <div class="os-row">
+      <div class="os-card" data-line="s04-1" data-at="0.4">
+        <div class="head"><h2 class="os-h2 os-secondary">computed</h2><span class="twin">≈ useMemo</span></div>
+<div class="code"><span class="k">const</span> visible = <span class="v">computed</span>(() =&gt;
+  tasks.value.filter(t =&gt;
+    t.title.includes(query.value)))</div>
+        <div class="note">Pure, cached, dependencies tracked for you</div>
+      </div>
+      <div class="os-card" data-line="s04-2" data-at="3.0">
+        <div class="head"><h2 class="os-h2 os-secondary">watch</h2><span class="twin">≈ useEffect + cleanup</span></div>
+<div class="code"><span class="v">watch</span>(userId, <span class="k">async</span> (id, _, <span class="hl">onCleanup</span>) =&gt; {
+  <span class="k">const</span> ctrl = <span class="k">new</span> AbortController()
+  <span class="hl">onCleanup</span>(() =&gt; ctrl.abort())
+  user.value = <span class="k">await</span> getUser(id, ctrl.signal)
+})</div>
+        <div class="reqs">
+          <span class="req r1">GET /users/1<span class="strike"></span></span>
+          <span class="req ok r2">GET /users/2 ✓</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script type="application/json" id="os-lines">{"s04-1":{"start":0.3,"end":2.203},"s04-2":{"start":2.453,"end":5.583}}</script>
+<script>
+  const S = OS.scene("s04");
+  S.enter(".eyebrow", { at: 0.1, kind: "fade" });
+  S.lines();
+  const t2 = S.line("s04-2", 3.0);
+  S.enter(".r1", { at: t2 + 1.0, kind: "pop" });
+  S.tl.fromTo(".r1 .strike", { scaleX: 0 }, { scaleX: 1, duration: 0.4, ease: "power2.out" }, t2 + 1.9);
+  S.enter(".r2", { at: t2 + 2.1, kind: "pop" });
+  S.done();
+</script>
+</body>
+</html>

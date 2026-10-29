@@ -1,0 +1,190 @@
+{
+  "version": 1,
+  "scenes": [
+    {
+      "id": "s01",
+      "title": "The shift",
+      "type": "text",
+      "mode": "kinetic-type",
+      "duration": 7.5,
+      "goal": "The viewer expects a mental-model change, not a syntax tour.",
+      "visual": "Split screen: a React component re-renders top to bottom on the left; a Vue component stays still on the right while one dependency line lights up. Headline: 'how state changes propagate'.",
+      "lines": [
+        { "id": "s01-1", "text": "You already know React.", "kind": "narration" },
+        { "id": "s01-2", "text": "The biggest shift in Vue is how state changes propagate.", "kind": "narration" }
+      ],
+      "sfx": [{ "name": "whoosh", "at": 0.2, "gain": -6 }]
+    },
+    {
+      "id": "s02",
+      "title": "Snapshot versus tracking",
+      "type": "diagram",
+      "mode": "split-compare",
+      "duration": 9,
+      "goal": "React re-runs with a snapshot; Vue tracks reads and updates dependents.",
+      "visual": "Left panel 'React': a stack of render snapshots, each a full function call. Right panel 'Vue': ref(0) with dependency lines running to a template node and a computed node; only those light up on change.",
+      "data": [{ "label": "On state change", "a": "Re-run component with new snapshot", "b": "Notify effects that read the value" }],
+      "lines": [
+        { "id": "s02-1", "text": "React renders with a state snapshot.", "kind": "fact", "source": "r1" },
+        { "id": "s02-2", "text": "Vue tracks reactive reads and updates the effects that depend on them.", "kind": "fact", "source": "r1" }
+      ]
+    },
+    {
+      "id": "s03",
+      "title": "Refs",
+      "type": "diagram",
+      "duration": 8.5,
+      "goal": "`.value` in script, automatic unwrapping in templates.",
+      "visual": "Two code cards: script card with `const count = ref(0)` and `count.value++` highlighted; template card with `{{ count }}` ticking 0 → 1 → 2.",
+      "lines": [
+        { "id": "s03-1", "text": "A ref holds a mutable value.", "kind": "fact", "source": "r1" },
+        { "id": "s03-2", "text": "In script, access dot value; top-level refs unwrap in templates.", "kind": "fact", "source": "r1" }
+      ],
+      "sfx": [{ "name": "click", "line": "s03-2", "at": 0.4, "gain": -8 }]
+    },
+    {
+      "id": "s04",
+      "title": "Computed and watch",
+      "type": "diagram",
+      "mode": "split-compare",
+      "duration": 8.5,
+      "goal": "computed for pure derivation, watch for side effects with cleanup.",
+      "visual": "Left card 'computed': query + tasks → filtered list. Right card 'watch': userId change fires fetch; the previous request is crossed out by onCleanup → abort().",
+      "data": [
+        { "label": "Use for", "a": "Pure derived state (cached)", "b": "Side effects (fetch, logging)" },
+        { "label": "React twin", "a": "useMemo", "b": "useEffect + cleanup" }
+      ],
+      "lines": [
+        { "id": "s04-1", "text": "Use computed for pure derived state.", "kind": "fact", "source": "r2" },
+        { "id": "s04-2", "text": "Use watch for side effects, and clean up stale requests.", "kind": "fact", "source": "r3" }
+      ]
+    },
+    {
+      "id": "s05",
+      "title": "Component contracts",
+      "type": "diagram",
+      "duration": 8.5,
+      "goal": "Props down, events up, slots for composition; composables and Pinia beside them.",
+      "visual": "Parent box above child box: 'props' arrow down, 'emit' arrow up, a dashed slot frame inside the child filled by parent content. Side badges: 'useX() composable' and 'Pinia store'.",
+      "lines": [
+        { "id": "s05-1", "text": "Props, events, and slots define component contracts.", "kind": "fact", "source": "r5" },
+        { "id": "s05-2", "text": "Composables share behavior; Pinia can manage shared client state.", "kind": "fact", "source": ["r6", "r4"] }
+      ]
+    },
+    {
+      "id": "s06",
+      "title": "Named slots",
+      "type": "diagram",
+      "mode": "split-compare",
+      "duration": 9,
+      "goal": "children / element props in React = default and named slots in Vue.",
+      "visual": "Left 'React': <Panel heading={<h2/>} actions={<Button/>}>children</Panel>. Right 'Vue': PanelCard with #heading, default and #actions regions filling in from the parent.",
+      "data": [{ "label": "Layout extension point", "a": "children + element props", "b": "default + named slots" }],
+      "lines": [
+        { "id": "s06-1", "text": "Named slots are like children and element props in React.", "kind": "fact", "source": "r5" },
+        { "id": "s06-2", "text": "The parent chooses content; the child owns layout.", "kind": "narration" }
+      ]
+    },
+    {
+      "id": "s07",
+      "title": "Scoped slots",
+      "type": "diagram",
+      "mode": "split-compare",
+      "duration": 9,
+      "goal": "Scoped slots are render props.",
+      "visual": "Left 'React': renderItem={(item) => <TaskCard task={item} />}. Right 'Vue': ItemList iterates rows and passes { item } up through <template #item=\"{ item }\">; TaskCard appears in each row.",
+      "data": [{ "label": "Child owns iteration, parent owns rendering", "a": "render props", "b": "scoped slots" }],
+      "lines": [
+        { "id": "s07-1", "text": "Scoped slots resemble render props.", "kind": "fact", "source": "r5" },
+        { "id": "s07-2", "text": "The list handles iteration while its consumer chooses how each item appears.", "kind": "narration" }
+      ]
+    },
+    {
+      "id": "s08",
+      "title": "Composables",
+      "type": "diagram",
+      "duration": 9,
+      "goal": "Composables = custom hooks; each call has its own state.",
+      "visual": "A useTaskFilter(source) box returns { query, onlyOpen, visibleTasks } into two consumers, 'List view' and 'Board view', each showing a different query value.",
+      "lines": [
+        { "id": "s08-1", "text": "Composables reuse reactive behavior without markup.", "kind": "fact", "source": "r6" },
+        { "id": "s08-2", "text": "Separate calls create independent state when that state lives inside the function.", "kind": "fact", "source": "r6" }
+      ]
+    },
+    {
+      "id": "s09",
+      "title": "Provide and inject",
+      "type": "diagram",
+      "duration": 8.5,
+      "goal": "Compound components via provide/inject, with explicit ownership.",
+      "visual": "SelectionGroup at the top provides { selected: readonly, select() }; a tree line passes through a layout wrapper to two SelectionOption buttons; 'Board' toggles to pressed.",
+      "lines": [
+        { "id": "s09-1", "text": "Compound components can use provide and inject.", "kind": "fact", "source": "r7" },
+        { "id": "s09-2", "text": "Keep state ownership explicit and expose actions for updates.", "kind": "fact", "source": "r7" }
+      ]
+    },
+    {
+      "id": "s10",
+      "title": "Compose in a higher layer",
+      "type": "diagram",
+      "duration": 10,
+      "goal": "Entities stay independent of features; a higher layer composes them.",
+      "visual": "TaskWorkspace (widget) slots CompleteTaskButton (feature) into TaskCard's #actions slot (entity). A struck-through arrow from TaskCard to the feature.",
+      "lines": [
+        { "id": "s10-1", "text": "Compose entity display and feature actions in a higher layer.", "kind": "opinion" },
+        { "id": "s10-2", "text": "The task card should not depend on the completion feature.", "kind": "opinion" }
+      ]
+    },
+    {
+      "id": "s11",
+      "title": "Feature-Sliced Design",
+      "type": "diagram",
+      "duration": 9,
+      "goal": "FSD layers apply unchanged to Vue; public APIs per slice.",
+      "visual": "Layer stack app, pages, widgets, features, entities, shared; example paths slide in: pages/tasks, features/complete-task, entities/task, shared/ui; each slice shows an index.ts gate.",
+      "lines": [
+        { "id": "s11-1", "text": "Feature-Sliced Design applies to Vue too.", "kind": "fact", "source": "r8" },
+        { "id": "s11-2", "text": "Organize by responsibility and expose public APIs rather than importing internal files.", "kind": "fact", "source": "r8" }
+      ]
+    },
+    {
+      "id": "s12",
+      "title": "Import rules",
+      "type": "diagram",
+      "duration": 7.5,
+      "goal": "Dependencies only point down; siblings are coordinated above.",
+      "visual": "features/complete-task → entities/task arrow turns green; features/complete-task → features/delete-task arrow turns red; pages/tasks above connects to both features.",
+      "lines": [
+        { "id": "s12-1", "text": "Across slices, dependencies point to lower layers.", "kind": "fact", "source": "r9" },
+        { "id": "s12-2", "text": "A page or widget coordinates sibling features.", "kind": "fact", "source": "r9" }
+      ],
+      "sfx": [{ "name": "pop", "line": "s12-1", "at": 1.2, "gain": -8 }]
+    },
+    {
+      "id": "s13",
+      "title": "Start small",
+      "type": "diagram",
+      "duration": 10.5,
+      "goal": "Adopt FSD incrementally.",
+      "visual": "Project tree starts with app, pages, shared; entities and features grow in one at a time as a 'reused' tag appears.",
+      "lines": [
+        { "id": "s13-1", "text": "Start small.", "kind": "opinion" },
+        { "id": "s13-2", "text": "Extract features when behavior is reused, and keep one-page behavior local until a useful boundary emerges.", "kind": "opinion" }
+      ]
+    },
+    {
+      "id": "s14",
+      "title": "Study plan",
+      "type": "text",
+      "mode": "kinetic-type",
+      "duration": 10,
+      "goal": "A concrete next step and the companion blog.",
+      "visual": "Checklist ticks one by one: reactivity, component contracts, router, testing, profiling. Ends on the blog title card 'Vue 3 for Senior React Developers'.",
+      "lines": [
+        { "id": "s14-1", "text": "Build a small task app, then add routing, tests, and performance profiling.", "kind": "narration" },
+        { "id": "s14-2", "text": "The accompanying blog explains each step.", "kind": "narration" }
+      ],
+      "sfx": [{ "name": "ding", "line": "s14-2", "at": 0.2, "gain": -8 }]
+    }
+  ]
+}

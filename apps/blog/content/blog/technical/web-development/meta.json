@@ -1,6 +1,7 @@
 {
   "title": "Web Development",
   "pages": [
+    "vue-for-react-developers",
     "why-i-love-typescript",
     "building-with-tanstack",
     "react-design-patterns-that-scale"

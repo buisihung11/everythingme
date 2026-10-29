@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1920, height=1080" />
+<!-- one-studio scene s11 (diagram). Edit content and the timeline only; styles come from brand tokens. -->
+<link rel="stylesheet" href="../assets/brand.css" />
+<link rel="stylesheet" href="../assets/os.css" />
+<script src="../assets/vendor/gsap.min.js"></script>
+<script src="../assets/brand.js"></script>
+<!-- studio preview of storyboard SFX cues (never in renders; the final mix is FFmpeg's) -->
+<script src="../assets/vendor/howler.core.min.js"></script>
+<script src="../assets/audio-cues.js"></script>
+<script src="../assets/os.js"></script>
+</head>
+<body>
+<div id="root" class="os-scene" data-composition-id="s11" data-start="0" data-duration="9" data-width="1920" data-height="1080"
+     data-transition-in="fade" data-transition-out="fade" data-transition-duration="0.4"
+     style="--w: 1920px; --h: 1080px">
+  <div class="os-frame clip" data-start="0" data-duration="9" data-track-index="0">
+    <style>
+      .eyebrow { font-family: var(--font-mono); font-size: calc(var(--fs-small) * var(--u)); color: var(--c-muted); letter-spacing: 0.16em; text-transform: uppercase; }
+      .wrap { display: flex; gap: calc(56 * var(--u)); align-items: center; }
+      .layers { flex: 1 1 0; display: flex; flex-direction: column; gap: calc(12 * var(--u)); }
+      .layer { display: flex; align-items: center; justify-content: space-between; padding: calc(14 * var(--u)) calc(28 * var(--u)); border-radius: calc(16 * var(--u)); border: calc(2 * var(--u)) solid color-mix(in srgb, var(--c-fg) 18%, transparent); background: color-mix(in srgb, var(--c-fg) 5%, transparent); }
+      .layer .name { font-family: var(--font-heading); font-weight: var(--fw-heading); font-size: calc(38 * var(--u)); }
+      .layer .path { font-family: var(--font-mono); font-size: calc(26 * var(--u)); color: var(--c-muted); }
+      .layer .api { font-family: var(--font-mono); font-size: calc(22 * var(--u)); color: var(--c-secondary); border: calc(2 * var(--u)) solid var(--c-secondary); border-radius: calc(10 * var(--u)); padding: calc(2 * var(--u)) calc(10 * var(--u)); margin-left: calc(16 * var(--u)); }
+      .imports { flex: 0 0 calc(660 * var(--u)); display: flex; flex-direction: column; gap: calc(22 * var(--u)); }
+      .imp { font-family: var(--font-mono); font-size: calc(25 * var(--u)); line-height: 1.5; white-space: pre; padding: calc(18 * var(--u)) calc(22 * var(--u)); border-radius: calc(14 * var(--u)); }
+      .imp.bad { border: calc(2 * var(--u)) solid var(--c-accent); color: var(--c-muted); position: relative; }
+      .imp.good { border: calc(2 * var(--u)) solid var(--c-secondary); }
+      .imp .mk { font-family: var(--font-body); font-size: calc(var(--fs-small) * var(--u)); display: block; margin-bottom: calc(6 * var(--u)); }
+    </style>
+    <div class="eyebrow">Architecture</div>
+    <h2 class="os-h2" data-line="s11-1" data-enter="words" data-at="0.4">Feature-Sliced Design applies to <span class="os-secondary">Vue</span> too</h2>
+    <div class="wrap">
+      <div class="layers">
+        <div class="layer"><span class="name">app</span><span class="path">app/router · app/providers</span></div>
+        <div class="layer"><span class="name">pages</span><span class="path">pages/tasks<span class="api">index.ts</span></span></div>
+        <div class="layer"><span class="name">widgets</span><span class="path">widgets/task-workspace<span class="api">index.ts</span></span></div>
+        <div class="layer"><span class="name os-accent">features</span><span class="path">features/complete-task<span class="api">index.ts</span></span></div>
+        <div class="layer"><span class="name">entities</span><span class="path">entities/task<span class="api">index.ts</span></span></div>
+        <div class="layer"><span class="name">shared</span><span class="path">shared/ui · shared/api</span></div>
+      </div>
+      <div class="imports" data-line="s11-2" data-at="3.0">
+        <div class="imp bad"><span class="mk os-accent">✕ deep import</span>import TaskCard from
+  '@/entities/task/ui/TaskCard.vue'</div>
+        <div class="imp good"><span class="mk os-secondary">✓ public API</span>import { TaskCard }
+  from '@/entities/task'</div>
+      </div>
+    </div>
+  </div>
+</div>
+<script type="application/json" id="os-lines">{"s11-1":{"start":0.3,"end":2.529},"s11-2":{"start":2.779,"end":7.927}}</script>
+<script>
+  const S = OS.scene("s11");
+  S.enter(".eyebrow", { at: 0.1, kind: "fade" });
+  S.lines();
+  const t1 = S.line("s11-1", 0.4);
+  const t2 = S.line("s11-2", 3.0);
+  S.enter(".layer", { at: t1 + 0.5, kind: "left", stagger: 0.12 });
+  S.enter(".api", { at: t2 + 0.6, kind: "pop", stagger: 0.1 });
+  S.done();
+</script>
+</body>
+</html>

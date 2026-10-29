@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1920, height=1080" />
+<!-- one-studio scene s03 (diagram). Edit content and the timeline only; styles come from brand tokens. -->
+<link rel="stylesheet" href="../assets/brand.css" />
+<link rel="stylesheet" href="../assets/os.css" />
+<script src="../assets/vendor/gsap.min.js"></script>
+<script src="../assets/brand.js"></script>
+<!-- studio preview of storyboard SFX cues (never in renders; the final mix is FFmpeg's) -->
+<script src="../assets/vendor/howler.core.min.js"></script>
+<script src="../assets/audio-cues.js"></script>
+<script src="../assets/os.js"></script>
+</head>
+<body>
+<div id="root" class="os-scene" data-composition-id="s03" data-start="0" data-duration="8.5" data-width="1920" data-height="1080"
+     data-transition-in="fade" data-transition-out="fade" data-transition-duration="0.4"
+     style="--w: 1920px; --h: 1080px">
+  <div class="os-frame clip" data-start="0" data-duration="8.5" data-track-index="0">
+    <style>
+      .eyebrow { font-family: var(--font-mono); font-size: calc(var(--fs-small) * var(--u)); color: var(--c-muted); letter-spacing: 0.16em; text-transform: uppercase; }
+      .tag { display: inline-block; font-family: var(--font-mono); font-size: calc(var(--fs-small) * var(--u)); padding: calc(6 * var(--u)) calc(18 * var(--u)); border-radius: calc(999 * var(--u)); border: calc(2 * var(--u)) solid currentColor; margin-bottom: calc(20 * var(--u)); color: var(--c-muted); }
+      .code { font-family: var(--font-mono); font-size: calc(34 * var(--u)); line-height: 1.55; white-space: pre; }
+      .k { color: var(--c-primary); } .v { color: var(--c-secondary); } .m { color: var(--c-muted); }
+      .mark { position: relative; color: var(--c-accent); }
+      .mark .ul { position: absolute; left: 0; right: 0; bottom: calc(-4 * var(--u)); height: calc(5 * var(--u)); border-radius: calc(3 * var(--u)); background: var(--c-accent); transform: scaleX(0); transform-origin: 0 50%; }
+      .os-row { align-items: stretch; }
+      .out { display: flex; align-items: baseline; gap: calc(20 * var(--u)); margin-top: calc(28 * var(--u)); }
+      .out .num { font-family: var(--font-heading); font-weight: var(--fw-heading); font-size: calc(var(--fs-h1) * var(--u)); color: var(--c-accent); }
+      .out .lbl { font-size: calc(var(--fs-small) * var(--u)); color: var(--c-muted); }
+      .note { margin-top: calc(16 * var(--u)); font-size: calc(var(--fs-small) * var(--u)); color: var(--c-muted); }
+    </style>
+    <div class="eyebrow">Refs</div>
+    <h2 class="os-h2" data-line="s03-1" data-enter="words" data-at="0.4">A ref holds a <span class="os-accent">mutable</span> value</h2>
+    <div class="os-row">
+      <div class="os-card c-script">
+        <div class="tag">&lt;script setup&gt;</div>
+<div class="code"><span class="k">const</span> count = <span class="v">ref</span>(0)
+
+<span class="k">function</span> inc() {
+  count<span class="mark m-script">.value<span class="ul"></span></span>++
+}</div>
+        <div class="note" data-line="s03-2" data-at="3.0">In script: <span class="os-accent">.value</span></div>
+      </div>
+      <div class="os-card c-tpl">
+        <div class="tag">&lt;template&gt;</div>
+<div class="code">&lt;button @click=<span class="v">"inc"</span>&gt;
+  <span class="mark m-tpl">{{ count }}<span class="ul"></span></span>
+&lt;/button&gt;</div>
+        <div class="out"><span class="num" data-value="3">0</span><span class="lbl">unwrapped automatically</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script type="application/json" id="os-lines">{"s03-1":{"start":0.3,"end":1.782},"s03-2":{"start":2.032,"end":5.637}}</script>
+<script>
+  const S = OS.scene("s03");
+  S.enter(".eyebrow", { at: 0.1, kind: "fade" });
+  S.enter(".c-script", { at: 0.3, kind: "up" });
+  S.enter(".c-tpl", { at: 0.5, kind: "up" });
+  S.lines();
+  const t2 = S.line("s03-2", 3.0);
+  S.tl.to(".m-script .ul", { scaleX: 1, duration: 0.4, ease: "power2.out" }, t2 + 0.2);
+  S.tl.to(".m-tpl .ul", { scaleX: 1, duration: 0.4, ease: "power2.out" }, t2 + 1.6);
+  S.count(".out .num", { at: t2 + 1.8, from: 0, to: 3, dur: 1.4 });
+  S.done();
+</script>
+</body>
+</html>

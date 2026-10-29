@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1920, height=1080" />
+<!-- one-studio scene s13 (diagram). Edit content and the timeline only; styles come from brand tokens. -->
+<link rel="stylesheet" href="../assets/brand.css" />
+<link rel="stylesheet" href="../assets/os.css" />
+<script src="../assets/vendor/gsap.min.js"></script>
+<script src="../assets/brand.js"></script>
+<!-- studio preview of storyboard SFX cues (never in renders; the final mix is FFmpeg's) -->
+<script src="../assets/vendor/howler.core.min.js"></script>
+<script src="../assets/audio-cues.js"></script>
+<script src="../assets/os.js"></script>
+</head>
+<body>
+<div id="root" class="os-scene" data-composition-id="s13" data-start="0" data-duration="10.5" data-width="1920" data-height="1080"
+     data-transition-in="fade" data-transition-out="fade" data-transition-duration="0.4"
+     style="--w: 1920px; --h: 1080px">
+  <div class="os-frame clip" data-start="0" data-duration="10.5" data-track-index="0">
+    <style>
+      .eyebrow { font-family: var(--font-mono); font-size: calc(var(--fs-small) * var(--u)); color: var(--c-muted); letter-spacing: 0.16em; text-transform: uppercase; }
+      .wrap { display: flex; gap: calc(80 * var(--u)); align-items: center; }
+      .tree { flex: 0 0 calc(760 * var(--u)); font-family: var(--font-mono); font-size: calc(34 * var(--u)); line-height: 1.7; }
+      .tree .row { display: flex; align-items: center; gap: calc(18 * var(--u)); }
+      .tree .ind { color: var(--c-muted); }
+      .tree .new { color: var(--c-secondary); }
+      .tree .why { font-family: var(--font-body); font-size: calc(22 * var(--u)); color: var(--c-accent); border: calc(2 * var(--u)) solid var(--c-accent); border-radius: calc(999 * var(--u)); padding: 0 calc(12 * var(--u)); }
+      .rule { flex: 1 1 0; display: flex; flex-direction: column; gap: calc(28 * var(--u)); }
+      .rule .os-body { color: var(--c-muted); }
+      .rule strong { color: var(--c-fg); font-weight: var(--fw-heading); }
+    </style>
+    <div class="eyebrow">Adopt incrementally</div>
+    <h1 class="os-h1" data-line="s13-1" data-enter="words" data-at="0.4">Start <span class="os-accent">small</span>.</h1>
+    <div class="wrap">
+      <div class="tree">
+        <div class="row r0">src/</div>
+        <div class="row r1"><span class="ind">├─</span>app/</div>
+        <div class="row r1"><span class="ind">├─</span>pages/tasks/</div>
+        <div class="row r2"><span class="ind">├─</span><span class="new">entities/task/</span><span class="why">reused</span></div>
+        <div class="row r3"><span class="ind">├─</span><span class="new">features/complete-task/</span><span class="why">reused</span></div>
+        <div class="row r1"><span class="ind">└─</span>shared/</div>
+      </div>
+      <div class="rule" data-line="s13-2" data-at="1.6">
+        <div class="os-body"><strong>Extract</strong> when behavior is reused.</div>
+        <div class="os-body"><strong>Keep local</strong> what one page owns.</div>
+        <div class="os-body"><strong>Wait</strong> for a useful boundary.</div>
+      </div>
+    </div>
+  </div>
+</div>
+<script type="application/json" id="os-lines">{"s13-1":{"start":0.3,"end":1.211,"kind":"opinion","label":"OPINION"},"s13-2":{"start":1.461,"end":7.378,"kind":"opinion","label":"OPINION"}}</script>
+<script>
+  const S = OS.scene("s13");
+  S.enter(".eyebrow", { at: 0.1, kind: "fade" });
+  S.lines();
+  const t1 = S.line("s13-1", 0.4);
+  const t2 = S.line("s13-2", 1.6);
+  S.enter(".r0, .r1", { at: t1 + 0.3, kind: "left", stagger: 0.15 });
+  S.enter(".r2", { at: t2 + 1.4, kind: "left" });
+  S.enter(".r3", { at: t2 + 2.6, kind: "left" });
+  S.done();
+</script>
+</body>
+</html>

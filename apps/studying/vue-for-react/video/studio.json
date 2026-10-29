@@ -1,0 +1,307 @@
+{
+  "version": 1,
+  "meta": {
+    "name": "video",
+    "title": "Vue 3 for Senior React Developers",
+    "language": "en",
+    "series": null,
+    "episode": null,
+    "created": "2026-10-29T07:02:42.471Z"
+  },
+  "brand": {
+    "ref": "brand/brand.json",
+    "version": 1
+  },
+  "format": {
+    "aspect": "16:9",
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "target_duration": 125,
+    "exports": [
+      "16:9"
+    ],
+    "platforms": [
+      "youtube"
+    ]
+  },
+  "engine": {
+    "default": "hyperframes",
+    "dimension": "2d",
+    "versions": {
+      "hyperframes": "0.8.181"
+    }
+  },
+  "services": {
+    "tts": true,
+    "lemo": false,
+    "anatomy": false,
+    "remotion": false
+  },
+  "gates": {
+    "setup": {
+      "done": true,
+      "at": "2026-10-29T07:02:42.472Z"
+    },
+    "brief": {
+      "done": true,
+      "at": "2026-10-29T07:03:40.976Z",
+      "hash": "f02cc705ccc1a2e3b9f810ac00bd4cf9095a73acc261dda0963f0ad5fa89e2b5"
+    },
+    "script": {
+      "done": true,
+      "at": "2026-10-29T07:08:31.799Z",
+      "hash": "52b72f49d9364eb2e782bd3febb8da1a955b098380709fda38fd715d98cedd60"
+    },
+    "storyboard": {
+      "done": true,
+      "at": "2026-10-29T07:08:31.848Z",
+      "hash": "49c780e397ec0aa77302642832425aeca693a1781bb68a7168a24d677e3c63cd"
+    },
+    "estimate": {
+      "done": true,
+      "at": "2026-10-29T07:08:31.888Z",
+      "hash": "49c780e397ec0aa77302642832425aeca693a1781bb68a7168a24d677e3c63cd"
+    },
+    "keyframes": {
+      "done": true,
+      "at": "2026-10-29T08:15:05.077Z",
+      "hash": "776c0ff819bb"
+    },
+    "build": {
+      "done": true,
+      "at": "2026-10-29T08:17:55.330Z",
+      "hash": "776c0ff819bb"
+    },
+    "audio": {
+      "done": true,
+      "at": "2026-10-29T08:21:08.235Z",
+      "hash": "a9a2b312ffde"
+    },
+    "preview": {
+      "done": true,
+      "at": "2026-10-29T09:44:58.583Z",
+      "hash": "4e508954a62b"
+    },
+    "render": {
+      "done": true,
+      "at": "2026-10-29T09:47:40.451Z",
+      "hash": "4e508954a62b"
+    },
+    "publish": {
+      "done": true,
+      "at": "2026-10-29T09:47:57.766Z",
+      "hash": "f14fb76827f2"
+    }
+  },
+  "story": {
+    "playbook": "comparison",
+    "tone": "dry-expert",
+    "modes": [
+      "split-compare",
+      "kinetic-type"
+    ]
+  },
+  "pronunciations": {
+    "en": {
+      "Vue": "view",
+      "Pinia": "Peenya"
+    }
+  },
+  "scenes": [
+    {
+      "id": "s01",
+      "hash": "ba0030d2d37a",
+      "approved_hash": "ba0030d2d37a",
+      "clip": "out/scenes/s01-ba0030d2d37a.mp4",
+      "duration": 7.5,
+      "status": "rendered",
+      "preview_clip": "out/preview/s01-ba0030d2d37a.mp4",
+      "fit_duration": null
+    },
+    {
+      "id": "s02",
+      "hash": "41247f52f30a",
+      "approved_hash": "41247f52f30a",
+      "clip": "out/scenes/s02-41247f52f30a.mp4",
+      "duration": 9,
+      "status": "rendered",
+      "preview_clip": "out/preview/s02-41247f52f30a.mp4",
+      "fit_duration": null
+    },
+    {
+      "id": "s03",
+      "hash": "0c9c7eb06b51",
+      "approved_hash": "0c9c7eb06b51",
+      "clip": "out/scenes/s03-0c9c7eb06b51.mp4",
+      "duration": 8.5,
+      "status": "rendered",
+      "preview_clip": "out/preview/s03-0c9c7eb06b51.mp4",
+      "fit_duration": null
+    },
+    {
+      "id": "s04",
+      "hash": "d9277211950e",
+      "approved_hash": "d9277211950e",
+      "clip": "out/scenes/s04-d9277211950e.mp4",
+      "duration": 8.5,
+      "status": "rendered",
+      "preview_clip": "out/preview/s04-d9277211950e.mp4",
+      "fit_duration": null
+    },
+    {
+      "id": "s05",
+      "hash": "cbdf3f289606",
+      "approved_hash": "cbdf3f289606",
+      "clip": "out/scenes/s05-cbdf3f289606.mp4",
+      "duration": 8.5,
+      "status": "rendered",
+      "preview_clip": "out/preview/s05-cbdf3f289606.mp4",
+      "fit_duration": null
+    },
+    {
+      "id": "s06",
+      "hash": "5e833306e04a",
+      "approved_hash": "5e833306e04a",
+      "clip": "out/scenes/s06-5e833306e04a.mp4",
+      "duration": 9,
+      "status": "rendered",
+      "preview_clip": "out/preview/s06-5e833306e04a.mp4",
+      "fit_duration": null
+    },
+    {
+      "id": "s07",
+      "hash": "82f2dfbfbade",
+      "approved_hash": "82f2dfbfbade",
+      "clip": "out/scenes/s07-82f2dfbfbade.mp4",
+      "duration": 9,
+      "status": "rendered",
+      "preview_clip": "out/preview/s07-82f2dfbfbade.mp4",
+      "fit_duration": null
+    },
+    {
+      "id": "s08",
+      "hash": "1d53686ffb22",
+      "approved_hash": "1d53686ffb22",
+      "clip": "out/scenes/s08-1d53686ffb22.mp4",
+      "duration": 9,
+      "status": "rendered",
+      "preview_clip": "out/preview/s08-1d53686ffb22.mp4",
+      "fit_duration": null
+    },
+    {
+      "id": "s09",
+      "hash": "0777d68f44c8",
+      "approved_hash": "0777d68f44c8",
+      "clip": "out/scenes/s09-0777d68f44c8.mp4",
+      "duration": 8.5,
+      "status": "rendered",
+      "preview_clip": "out/preview/s09-0777d68f44c8.mp4",
+      "fit_duration": null
+    },
+    {
+      "id": "s10",
+      "hash": "513ff5b9978f",
+      "approved_hash": "513ff5b9978f",
+      "clip": "out/scenes/s10-513ff5b9978f.mp4",
+      "duration": 10,
+      "status": "rendered",
+      "preview_clip": "out/preview/s10-513ff5b9978f.mp4",
+      "fit_duration": null
+    },
+    {
+      "id": "s11",
+      "hash": "51db50c681ee",
+      "approved_hash": "51db50c681ee",
+      "clip": "out/scenes/s11-51db50c681ee.mp4",
+      "duration": 9,
+      "status": "rendered",
+      "preview_clip": "out/preview/s11-51db50c681ee.mp4",
+      "fit_duration": null
+    },
+    {
+      "id": "s12",
+      "hash": "4a9307b625bc",
+      "approved_hash": "4a9307b625bc",
+      "clip": "out/scenes/s12-4a9307b625bc.mp4",
+      "duration": 7.5,
+      "status": "rendered",
+      "preview_clip": "out/preview/s12-4a9307b625bc.mp4",
+      "fit_duration": null
+    },
+    {
+      "id": "s13",
+      "hash": "d25aaf0381ec",
+      "approved_hash": "d25aaf0381ec",
+      "clip": "out/scenes/s13-d25aaf0381ec.mp4",
+      "duration": 10.5,
+      "status": "rendered",
+      "preview_clip": "out/preview/s13-d25aaf0381ec.mp4",
+      "fit_duration": null
+    },
+    {
+      "id": "s14",
+      "hash": "89a7d555a63c",
+      "approved_hash": "89a7d555a63c",
+      "clip": "out/scenes/s14-89a7d555a63c.mp4",
+      "duration": 10,
+      "status": "rendered",
+      "preview_clip": "out/preview/s14-89a7d555a63c.mp4",
+      "fit_duration": null
+    }
+  ],
+  "audio": {
+    "tts": {
+      "default": {
+        "base_url": "http://localhost:8001",
+        "model": "omnivoice",
+        "voice": "cedar",
+        "format": "wav",
+        "key_env": "ONE_STUDIO_TTS_KEY",
+        "words_per_second": {
+          "cedar": 2.94
+        }
+      }
+    },
+    "music": "assets/music/ambient.wav",
+    "sfx": true,
+    "loudness": -14,
+    "sentence_pause": 0.25,
+    "scene_padding": 0.5
+  },
+  "render": {
+    "quality": "looks",
+    "preview_height": 540,
+    "out_dir": "out",
+    "codec": "h264",
+    "pix_fmt": "yuv420p",
+    "ratio_stage": 1
+  },
+  "credit": {
+    "warn_scenes": 8,
+    "warn_types": [
+      "3d",
+      "character",
+      "explainer"
+    ]
+  },
+  "outputs": {
+    "preview": {
+      "path": "out/video-preview.mp4",
+      "hash": "4e508954a62b",
+      "at": "2026-10-29T08:23:41.198Z",
+      "duration": 124.5
+    },
+    "final": {
+      "path": "out/video.mp4",
+      "hash": "4e508954a62b",
+      "at": "2026-10-29T09:47:40.365Z",
+      "duration": 124.5
+    },
+    "publish": {
+      "path": "out/manifest.json",
+      "hash": "f14fb76827f2",
+      "at": "2026-10-29T09:47:49.031Z"
+    }
+  }
+}

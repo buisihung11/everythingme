@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1920, height=1080" />
+<!-- one-studio scene s09 (diagram). Edit content and the timeline only; styles come from brand tokens. -->
+<link rel="stylesheet" href="../assets/brand.css" />
+<link rel="stylesheet" href="../assets/os.css" />
+<script src="../assets/vendor/gsap.min.js"></script>
+<script src="../assets/brand.js"></script>
+<!-- studio preview of storyboard SFX cues (never in renders; the final mix is FFmpeg's) -->
+<script src="../assets/vendor/howler.core.min.js"></script>
+<script src="../assets/audio-cues.js"></script>
+<script src="../assets/os.js"></script>
+</head>
+<body>
+<div id="root" class="os-scene" data-composition-id="s09" data-start="0" data-duration="8.5" data-width="1920" data-height="1080"
+     data-transition-in="fade" data-transition-out="fade" data-transition-duration="0.4"
+     style="--w: 1920px; --h: 1080px">
+  <div class="os-frame clip" data-start="0" data-duration="8.5" data-track-index="0">
+    <style>
+      .eyebrow { font-family: var(--font-mono); font-size: calc(var(--fs-small) * var(--u)); color: var(--c-muted); letter-spacing: 0.16em; text-transform: uppercase; }
+      .os-diagram { height: calc(620 * var(--u)); }
+      .os-diagram text { font-size: 30px; }
+      .os-diagram .mono { font-family: var(--font-mono); }
+      .os-diagram .small { font-size: 24px; fill: var(--c-muted); }
+      .os-diagram .lbl-s { fill: var(--c-secondary); }
+      .os-diagram .lbl-a { fill: var(--c-accent); }
+      .os-diagram .box-s { fill: none; stroke: var(--c-secondary); stroke-width: 4; }
+      .os-diagram .dashed { fill: none; stroke: var(--c-muted); stroke-width: 3; stroke-dasharray: 12 10; }
+      .os-diagram .pressed { fill: var(--c-accent); opacity: 0; }
+      .os-diagram .on-accent { fill: var(--c-bg); opacity: 0; }
+    </style>
+    <div class="eyebrow">Pattern 4 · Compound components</div>
+    <h2 class="os-h2" data-line="s09-1" data-enter="words" data-at="0.4"><span class="os-secondary">provide</span> / <span class="os-secondary">inject</span> ≈ Context</h2>
+    <div class="os-diagram">
+      <svg viewBox="0 0 1600 620" xmlns="http://www.w3.org/2000/svg">
+        <g class="grp">
+          <rect class="box-s" x="300" y="10" width="1000" height="150" rx="24" />
+          <text class="mono lbl-s" x="340" y="72">&lt;SelectionGroup&gt;</text>
+          <text class="mono small" x="340" y="122">provide(key, { selected: readonly(selected), select })</text>
+        </g>
+        <path class="stroke-primary edge" d="M800 165 V 250" />
+        <g class="wrap">
+          <rect class="dashed" x="420" y="255" width="760" height="90" rx="20" />
+          <text class="small" x="800" y="310" text-anchor="middle">any layout wrapper (no prop drilling)</text>
+        </g>
+        <path class="stroke-primary edge" d="M600 350 V 440" />
+        <path class="stroke-primary edge" d="M1000 350 V 440" />
+        <g class="opt1">
+          <rect class="stroke" x="420" y="445" width="360" height="110" rx="20" />
+          <text class="mono" x="600" y="512" text-anchor="middle">Option: List</text>
+        </g>
+        <g class="opt2">
+          <rect class="stroke" x="820" y="445" width="360" height="110" rx="20" />
+          <rect class="pressed" x="820" y="445" width="360" height="110" rx="20" />
+          <text class="mono label-off" x="1000" y="512" text-anchor="middle">Option: Board</text>
+          <text class="mono on-accent" x="1000" y="512" text-anchor="middle">Option: Board</text>
+        </g>
+        <path class="stroke-accent act" d="M1190 500 C 1400 500, 1400 85, 1310 85" />
+        <text class="mono lbl-a act-l" x="1330" y="310">select('board')</text>
+      </svg>
+    </div>
+  </div>
+</div>
+<script type="application/json" id="os-lines">{"s09-1":{"start":0.3,"end":2.61},"s09-2":{"start":2.86,"end":6.221}}</script>
+<script>
+  const S = OS.scene("s09");
+  S.enter(".eyebrow", { at: 0.1, kind: "fade" });
+  S.lines();
+  const t1 = S.line("s09-1", 0.4);
+  const t2 = S.line("s09-2", 3.0);
+  S.enter(".grp", { at: t1 + 0.4, kind: "fade" });
+  S.draw(".edge", { at: t1 + 0.8, dur: 0.4, stagger: 0.25 });
+  S.enter(".wrap", { at: t1 + 1.0, kind: "fade" });
+  S.enter(".opt1, .opt2", { at: t1 + 1.4, kind: "pop", stagger: 0.15 });
+  S.draw(".act", { at: t2 + 0.3, dur: 0.8 });
+  S.enter(".act-l", { at: t2 + 0.8, kind: "fade" });
+  S.tl.to(".pressed, .on-accent", { opacity: 1, duration: 0.3 }, t2 + 1.2);
+  S.done();
+</script>
+</body>
+</html>
