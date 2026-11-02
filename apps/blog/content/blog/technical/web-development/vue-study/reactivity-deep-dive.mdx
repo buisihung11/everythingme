@@ -1,0 +1,182 @@
+---
+title: 'Vue Study #6: Khi UI không cập nhật'
+description: Proxy, track và trigger, shallowRef, markRaw và các bẫy khi destructure, để đoán đúng vì sao màn hình đứng yên.
+date: 2026-11-02
+type: technical
+category: web-development
+readTime: 18
+thumbnail: /thumbnails/vue-study.svg
+---
+
+<SeriesNav current="reactivity-deep-dive" />
+
+Năm bài trước, bạn đã viết component. Bài này dành cho lúc bạn đã va câu **"sao UI không cập nhật?"**. Sau bài này, bạn sẽ giải thích được vì sao một dòng code không làm màn hình đổi, chọn được `shallowRef` hay `markRaw` cho dữ liệu lớn, và nhận ra ngay những dòng làm mất reactivity.
+
+Cả bài xoay quanh một câu:
+
+> **Reactivity nằm ở đường truy cập, không nằm ở giá trị. Đọc thì ghi tên, ghi thì tra sổ để báo.**
+
+Bốn hình. Bấm vào một ô để nhảy tới phần tương ứng.
+
+<MemoryMap id="reactivity-deep-dive" />
+
+## 1. Proxy: người gác cổng có năm cái bẫy [#proxy]
+
+`Proxy` là tính năng có sẵn của JavaScript, không phải của Vue. Bạn đưa cho nó một object gốc (target) và một handler. Từ đó, mọi thao tác trên proxy đều đi qua các hàm trong handler, gọi là **bẫy (trap)**. `reactive()` của Vue chính là `new Proxy(target, handler)`, với handler đặt năm cái bẫy:
+
+- `get`: ai đó đọc `obj.key`, Vue gọi **track** để ghi tên người đọc.
+- `set`: ai đó ghi `obj.key = v`. Nếu giá trị thực sự đổi, Vue gọi **trigger** để báo.
+- `has`: toán tử `'key' in obj`, cũng là một lần đọc, nên cũng track.
+- `deleteProperty`: `delete obj.key`, là một lần ghi, nên trigger.
+- `ownKeys`: `Object.keys(obj)` hay `for...in`, track một khóa đặc biệt nghĩa là "người duyệt danh sách key".
+
+Phiên bản rút gọn của `reactive` trông như thế này:
+
+```ts
+function reactive<T extends object>(target: T): T {
+  return new Proxy(target, {
+    get(obj, key, receiver) {
+      track(obj, key)                       // ghi tên người đang đọc
+      return Reflect.get(obj, key, receiver)
+    },
+    set(obj, key, value, receiver) {
+      const old = Reflect.get(obj, key, receiver)
+      const ok = Reflect.set(obj, key, value, receiver)
+      if (!Object.is(old, value)) trigger(obj, key) // chỉ báo khi giá trị đổi
+      return ok
+    },
+  })
+}
+```
+
+<ProxyTraps />
+
+Ba điều nên nhớ từ hình trên:
+
+1. **Proxy chặn được cả key chưa tồn tại.** Vue 2 dùng `Object.defineProperty`, chỉ canh được các key có sẵn lúc khởi tạo, nên phải dùng `Vue.set` để thêm key mới. Vue 3 không cần nữa, kể cả với `arr[i] = x` hay `delete obj.key`.
+2. **Ghi lại đúng giá trị cũ thì không ai bị báo.** Vue so sánh bằng `Object.is` trước khi trigger.
+3. **Chỉ proxy mới có gác cổng.** `reactive(raw) !== raw`. Sửa `raw` là đi cửa sau. Gọi `reactive(raw)` lần nữa sẽ trả về đúng proxy cũ, nhờ vậy một object chỉ có một người gác.
+
+Còn `ref` thì sao? `ref` không dùng Proxy. Nó là một object có getter và setter trên thuộc tính `.value`, và gọi track, trigger y như bẫy `get`, `set`. Nếu bạn bỏ một object vào `ref`, phần `.value` sẽ được bọc bằng `reactive()`. Vì vậy `count.value++` và `list.value.push(x)` đều reactive.
+
+So với React: React không theo dõi việc đọc. Bạn phải chủ động gọi `setState` để báo "có thay đổi", và React chạy lại cả hàm component để tìm xem cái gì khác đi. Vue biết ai đọc gì ngay từ lúc đọc.
+
+<Callout type="warn" title="Bug: sửa object gốc thay vì proxy">
+  Hay gặp khi bạn truyền một object cho thư viện bên ngoài trước khi bọc `reactive`, rồi thư viện đó sửa object gốc. Hoặc bạn giữ một biến trỏ tới object gốc và sửa qua biến đó. Dữ liệu đổi, màn hình đứng yên. Quy tắc: bọc xong thì quên object gốc đi, chỉ làm việc với proxy.
+</Callout>
+
+## 2. track và trigger: cuốn sổ ba tầng [#track-trigger]
+
+Khi Vue chạy một **effect** (hàm render của component, một `computed`, một `watch` hay `watchEffect`), nó đánh dấu effect đó là "người đang đọc". Trong lúc effect chạy, mỗi lần bẫy `get` bắt được một lần đọc, `track` ghi người đang đọc vào sổ. Khi bẫy `set` bắt được một lần ghi, `trigger` tra sổ và báo cho đúng những effect đã đọc key đó.
+
+Cuốn sổ có ba tầng:
+
+| Tầng | Kiểu dữ liệu | Khóa | Giá trị |
+| --- | --- | --- | --- |
+| 1 | `WeakMap` | object gốc | Map các key của object đó |
+| 2 | `Map` | tên thuộc tính, ví dụ `'price'` | Dep của thuộc tính đó |
+| 3 | `Dep` | | các effect đang đọc thuộc tính đó |
+
+Đây là hình dạng để nhớ, không phải API bạn gọi. Skill cần lấy ra: **effect chỉ phụ thuộc vào những gì nó thực sự đọc trong lần chạy gần nhất.**
+
+<TrackTriggerMap />
+
+Những điều demo cho thấy:
+
+1. **Sổ được viết lại sau mỗi lần chạy.** Nhánh `if` không chạy thì key trong nhánh đó không được ghi. Đây là lý do Vue không cần dependency array.
+2. **Chỉ đọc trong effect mới được ghi sổ.** Đọc `state.count` trong thân `script setup` hay trong một handler `@click` không track gì cả, vì lúc đó không có effect nào đang chạy.
+3. **trigger rất chính xác.** Đổi `name` chỉ làm render chạy lại. watchEffect và watch không đọc `name` nên không bị đụng tới.
+
+## 3. Gác cổng canh tới đâu: ref, shallowRef và các lối thoát [#do-sau]
+
+Mặc định, Vue canh **sâu**. `reactive` bọc object lồng bên trong ngay khi bạn đọc tới nó, và `ref` chứa object thì dùng `reactive` cho `.value`. Sửa `state.user.tags.push('ts')` ở độ sâu nào cũng được báo.
+
+Canh sâu tiện, nhưng có giá: mỗi thuộc tính được đọc là một lần track. Với một danh sách 10.000 dòng chỉ để hiển thị, đó là hàng chục nghìn mục trong sổ mà không ai cần. Vue có các phiên bản **shallow** chỉ canh lớp ngoài cùng, và hai lối thoát cho những trường hợp đặc biệt:
+
+- `shallowRef`: chỉ canh cửa `.value`. Thay cả giá trị thì được báo, sửa bên trong thì không. Gọi `triggerRef(r)` để ép báo bằng tay.
+- `shallowReactive`: chỉ các key ở tầng đầu là reactive.
+- `readonly`: một proxy chặn mọi thao tác ghi (kèm cảnh báo khi dev), nhưng vẫn reactive khi nguồn gốc đổi.
+- `markRaw`: dán tem "miễn canh" lên một object. Vue sẽ không bao giờ bọc Proxy cho nó, kể cả khi nó nằm trong một `reactive`.
+
+<DepthCompare />
+
+```ts
+const rows = shallowRef<Row[]>([])
+
+rows.value = await fetchRows()        // ✓ thay cả mảng: trigger
+rows.value.push(newRow)               // ✗ sửa bên trong: không ai được báo
+rows.value = [...rows.value, newRow]  // ✓ cập nhật bất biến, quen thuộc với React
+
+const chart = markRaw(new Chart(canvas)) // không bao giờ bị bọc Proxy
+```
+
+Nếu bạn đến từ React, `shallowRef` sẽ thấy rất quen: nó hoạt động y như `useState` với dữ liệu bất biến. Muốn cập nhật thì tạo giá trị mới và gán lại. Đây cũng là lựa chọn tự nhiên khi bạn dùng Immer hay nhận dữ liệu lớn từ API.
+
+<Callout type="warn" title="Bug: bỏ instance của thư viện vào ref">
+  `const map = ref(new MapView(el))` làm `map.value` thành một Proxy sâu. Class dùng private field (`#x`) sẽ ném `TypeError` khi `this` là Proxy, và Vue tốn công theo dõi hàng nghìn thuộc tính nội bộ. Dùng `shallowRef(new MapView(el))` hoặc `markRaw(...)` cho instance của chart, map, editor.
+</Callout>
+
+## 4. Bẫy destructure: mang giá trị ra khỏi cổng [#destructure]
+
+Bài 2 đã nhắc tới bẫy này. Giờ bạn đã biết cơ chế nên có thể gọi tên chính xác nguyên nhân: **reactivity nằm ở đường truy cập, không nằm ở giá trị.** `state.count` chỉ được track khi nó được đọc *bên trong một effect*. Nếu bạn tính `state.count` ở chỗ khác rồi mang con số đó đi, thứ bạn có chỉ là một con số.
+
+Ở React, chuyện này không xảy ra vì hàm component chạy lại mỗi lần render, và destructure lại từ đầu. Ở Vue, `setup` chỉ chạy một lần, nên giá trị lấy ra lúc setup sẽ đứng yên mãi mãi.
+
+<DestructureTraps />
+
+Ba cách giữ liên kết, theo thứ tự hay dùng:
+
+1. **Truyền cái hộp**: truyền `count` (ref) thay vì `count.value`.
+2. **Truyền getter**: `() => state.count`, `() => props.id`. Getter được gọi lại bên trong effect, nên lần đọc được ghi sổ.
+3. **Đổi thuộc tính thành hộp**: `toRefs(state)` cho cả object, `toRef(state, 'count')` hoặc `toRef(() => props.id)` cho một thuộc tính.
+
+Composable nên nhận cả ba dạng. `MaybeRefOrGetter` và `toValue` (có từ Vue 3.3) sinh ra cho đúng việc này:
+
+```ts
+import { computed, toValue, type MaybeRefOrGetter } from 'vue'
+
+export function useDouble(source: MaybeRefOrGetter<number>) {
+  return computed(() => toValue(source) * 2) // toValue mở hộp hoặc gọi getter
+}
+
+useDouble(count)            // ✓ ref
+useDouble(() => props.qty)  // ✓ getter
+useDouble(props.qty)        // ✗ chỉ là con số lúc gọi
+```
+
+Từ Vue 3.5, `const { id } = defineProps()` trong `script setup` **không** mất reactivity. Compiler tự đổi mọi chỗ dùng `id` thành `props.id`. Nhưng khi truyền ra ngoài, bạn vẫn phải bọc getter: `watch(() => id, ...)`. Nếu viết `watch(id, ...)`, compiler sẽ báo lỗi ngay.
+
+<Callout type="warn" title="Bug kinh điển: watch một giá trị thay vì một nguồn">
+  `watch(state.count, cb)` và `watch(props.id, cb)` truyền vào một con số hoặc một chuỗi. Vue cảnh báo "Invalid watch source" và callback không bao giờ chạy. Nguồn hợp lệ của `watch` là một ref, một object reactive, một getter, hoặc một mảng các thứ đó.
+</Callout>
+
+## Ôn tập [#on-tap]
+
+Lật thẻ nhớ trước, rồi làm quiz.
+
+<Flashcards id="reactivity-deep-dive" />
+
+## Quiz cuối bài [#quiz]
+
+Sáu câu, đọc code và đoán "có cập nhật hay không". Đặt mục tiêu ít nhất 5/6 trước khi sang Bài 7.
+
+<Quiz id="reactivity-deep-dive" />
+
+## Bài tập 15 phút [#bai-tap]
+
+Mở [Vue SFC Playground](https://play.vuejs.org/). Cố tình phá, rồi sửa:
+
+1. `const raw = { n: 0 }; const state = reactive(raw); raw.n++` — UI đứng yên. Sửa bằng cách chỉ đụng vào `state`.
+2. `const rows = shallowRef([{ id: 1 }]); rows.value.push({ id: 2 })` — UI đứng yên. Sửa bằng gán lại mảng mới, hoặc `triggerRef`.
+3. `const { total } = reactive({ total: 0 })` — quan sát bug, rồi sửa bằng `toRefs`.
+
+Thắng lợi: nhìn thấy ba nguyên nhân "UI không cập nhật" và sửa được cả ba.
+
+## Bài tiếp theo [#bai-tiep-theo]
+
+[Bài 7, **nextTick và effectScope**](/blog/technical/web-development/vue-study/tick-and-scope) trả lời câu còn lại: dữ liệu đã đổi, nhưng **DOM đổi khi nào**, và watcher sống đến bao giờ.
+
+**Tài liệu gốc nên đọc kèm:**
+[Reactivity in Depth](https://vuejs.org/guide/extras/reactivity-in-depth.html),
+[Reactivity API: Advanced](https://vuejs.org/api/reactivity-advanced.html),
+[Performance: Reduce Reactivity Overhead](https://vuejs.org/guide/best-practices/performance.html#reduce-reactivity-overhead-for-large-immutable-structures).

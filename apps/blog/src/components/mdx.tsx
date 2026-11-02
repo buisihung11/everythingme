@@ -2,6 +2,7 @@ import defaultMdxComponents from 'fumadocs-ui/mdx'
 import type { MDXComponents } from 'mdx/types'
 import type { ImgHTMLAttributes } from 'react'
 import { Image } from '@/components/mdx/Image'
+import * as VueStudy from '@/components/mdx/vue-study'
 
 function PersonalImage({
   alt,
@@ -15,6 +16,7 @@ function PersonalImage({
 export function getMDXComponents(components?: MDXComponents) {
   return {
     ...defaultMdxComponents,
+    ...VueStudy,
     Image,
     img: PersonalImage,
     ...components,

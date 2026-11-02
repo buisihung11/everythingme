@@ -1,0 +1,158 @@
+---
+title: 'Vue Study #2: Hộp, gác cổng, bảng tính'
+description: ref, reactive, computed và watch, mỗi thứ một hình ảnh, để chọn đúng công cụ cho state.
+date: 2026-11-02
+type: technical
+category: web-development
+readTime: 18
+thumbnail: /thumbnails/vue-study.svg
+---
+
+<SeriesNav current="reactive-state" />
+
+Bài 1 đã nói Vue ghi sổ. Bài này đưa sổ đó vào tay bạn. Sau bài này, bạn sẽ chọn được `ref` hay `reactive`, `computed` hay `watch`, và tránh được hai bug đầu tiên khi chuyển từ React sang.
+
+Cả bài xoay quanh một câu:
+
+> **ref là cái hộp, reactive là người gác cổng, computed là ô công thức, watch là cái chuông.**
+
+Bốn hình, hai phần. Bấm vào một ô để nhảy tới phần tương ứng.
+
+<MemoryMap id="reactive-state" />
+
+## 1. ref là cái hộp, reactive là người gác cổng [#ref-reactive]
+
+Vue có hai cách tạo state reactive. Chúng khác nhau ở **hình dạng**, nên hãy nhớ bằng hai hình ảnh.
+
+**`ref` là một cái hộp có nhãn.** Giá trị nằm trong `.value`. Ở trong script bạn phải mở hộp (`count.value++`). Ở trong template, Vue tự mở hộp giúp bạn (`{{ count }}`). Hộp đựng được mọi thứ: number, string, object, array. Bạn cũng có thể thay hẳn đồ trong hộp (`list.value = []`).
+
+**`reactive` là người gác cổng đứng trước một object.** Thực chất nó là một JavaScript `Proxy`. Mỗi lần ai đó đọc `cart.qty`, gác cổng ghi tên người đó vào sổ (**track**). Mỗi lần ai đó ghi `cart.qty = 2`, gác cổng báo cho mọi người có tên trong sổ (**trigger**). `ref` cũng dùng cơ chế track và trigger y hệt, chỉ là gác ở cửa `.value`.
+
+<RefBox />
+
+```ts
+import { reactive, ref, toRefs } from 'vue'
+
+const count = ref(0)
+count.value++               // trong script: mở hộp
+
+const cart = reactive({ qty: 1, coupon: '' })
+cart.qty++                  // không cần .value
+
+const { qty } = cart        // ✗ lấy ra một con số, mất liên kết
+const { coupon } = toRefs(cart) // ✓ lấy ra một cái hộp nối với cart.coupon
+```
+
+**Nên dùng cái nào?** Mặc định cứ dùng `ref`. Tài liệu chính thức của Vue cũng khuyên như vậy. `ref` dùng được với mọi kiểu dữ liệu, thay giá trị được, và chữ `.value` nhắc bạn rằng đây là dữ liệu reactive. Chỉ dùng `reactive` khi bạn có một object gom nhiều trường liên quan, như form, và sẽ không destructure nó.
+
+Cơ chế bên trong gác cổng (Proxy, sổ ba tầng, `shallowRef`) để dành khi bạn đã viết vài component và va phải câu "sao UI không cập nhật?". Đó là [Bài 6](/blog/technical/web-development/vue-study/reactivity-deep-dive).
+
+<Callout type="warn" title="Bug kinh điển số 1: destructure làm mất reactivity">
+  Viết `const { qty } = cart` hay `const n = count.value` là bạn đã lấy giá trị ra khỏi hộp hoặc ra ngoài cổng. Kết quả chỉ là một bản sao, đứng yên mãi mãi. Khi cần truyền đi, hãy truyền nguyên cái hộp (`count`) hoặc dùng `toRefs` / `toRef`.
+</Callout>
+
+## 2. Vue là một bảng tính [#bang-tinh]
+
+Hình ảnh mạnh nhất để hiểu reactivity của Vue là **Excel**:
+
+| Excel | Vue | React gần nhất |
+| --- | --- | --- |
+| Ô nhập số liệu | `ref` / `reactive` | `useState` |
+| Ô công thức, ví dụ `=A1*B1` | `computed` | `useMemo` (nhưng không phải khai báo deps) |
+| Biểu đồ đọc các ô | `template` (render) | JSX trong `return` |
+| Macro chạy khi một ô đổi | `watch` | `useEffect` |
+
+Sửa một ô số liệu thì Excel chỉ tính lại những công thức phụ thuộc ô đó. Vue cũng vậy. Hãy thử đúng ba thao tác được gợi ý trong chú thích của hình, rồi để ý cột "Chuyện gì vừa xảy ra".
+
+<ReactiveSpreadsheet />
+
+Những điều demo cho thấy:
+
+1. **computed có cache.** Sửa `note` không làm `subtotal`, `shipping` hay `total` chạy lại. Số lần chạy của chúng đứng yên.
+2. **computed được tính khi có người đọc (lazy).** Nếu không ai đọc một computed, nó không bao giờ chạy.
+3. **Thay đổi dừng lan nếu giá trị không đổi.** Khi `shipping` được tính lại mà vẫn là 0, những thứ chỉ phụ thuộc vào nó sẽ không bị báo. Vue làm điều này từ phiên bản 3.4.
+4. **watch dành cho side effect.** "Lưu giỏ hàng" là việc tác động ra bên ngoài, nên nó nằm trong `watch`, không nằm trong `computed`.
+
+Code thật của demo trên:
+
+```vue
+<script setup lang="ts">
+import { computed, ref, watch } from 'vue'
+
+const price = ref(120)
+const qty = ref(2)
+const note = ref('Giao giờ hành chính')
+
+const subtotal = computed(() => price.value * qty.value)
+const shipping = computed(() => (subtotal.value >= 300 ? 0 : 30))
+const total = computed(() => subtotal.value + shipping.value)
+
+watch(total, (value) => {
+  localStorage.setItem('cart-total', String(value))
+})
+</script>
+
+<template>
+  <p>Phí ship: {{ shipping === 0 ? 'Miễn phí' : `${shipping}k` }}</p>
+  <p>Tổng: {{ total }}k</p>
+  <p>Ghi chú: {{ note }}</p>
+</template>
+```
+
+<Callout type="warn" title="Bug kinh điển số 2: side effect trong computed">
+  `computed` phải là hàm thuần: chỉ đọc state và trả về một giá trị. Không gọi API, không sửa state khác, không ghi localStorage trong computed. Vue có thể chạy computed vào bất cứ lúc nào nó cần, hoặc không chạy nếu không ai đọc. Side effect đặt trong đó sẽ chạy thất thường.
+</Callout>
+
+## 3. Chọn đúng công cụ: computed, watch hay hàm thường [#chon-cong-cu]
+
+Ba công cụ này hay bị dùng lẫn. Quy tắc phân biệt chỉ cần một câu hỏi: **thứ gì kích hoạt việc này?**
+
+- Bạn cần **một giá trị** suy ra từ state khác: dùng `computed`.
+- Bạn cần **làm một việc khi dữ liệu đổi**: dùng `watch`, hoặc `watchEffect` nếu muốn Vue tự theo dõi mọi thứ bạn đọc.
+- Bạn cần **làm một việc khi người dùng thao tác**: dùng một hàm thường, gắn vào `@click` hay `@submit`.
+
+<ToolPicker />
+
+```ts
+// watch với nguồn rõ ràng, có hủy request cũ: tương đương useEffect + AbortController
+watch(
+  () => route.params.id,
+  async (id, _oldId, onCleanup) => {
+    const controller = new AbortController()
+    onCleanup(() => controller.abort())
+    user.value = await fetchUser(id, { signal: controller.signal })
+  },
+  { immediate: true },
+)
+```
+
+## Ôn tập [#on-tap]
+
+Lật thẻ nhớ trước để gợi lại từng hình ảnh, rồi làm quiz.
+
+<Flashcards id="reactive-state" />
+
+## Quiz cuối bài [#quiz]
+
+Năm câu, đọc code và đoán kết quả. Đặt mục tiêu ít nhất 4/5 trước khi sang Bài 3.
+
+<Quiz id="reactive-state" />
+
+## Bài tập 15 phút [#bai-tap]
+
+Mở [Vue SFC Playground](https://play.vuejs.org/) và tự viết `CartMini.vue`:
+
+1. `price` và `qty` là `ref`, gắn vào hai input bằng `v-model.number`.
+2. `total` là `computed` = `price * qty`. Hiện trên tiêu đề.
+3. Một `watch` lưu `total` vào `localStorage`. Không được nhét việc này vào `computed`.
+
+Thắng lợi: chọn đúng hộp, ô công thức, và cái chuông, trên một màn hình nhỏ.
+
+## Bài tiếp theo [#bai-tiep-theo]
+
+[Bài 3, **Template và vòng đời**](/blog/technical/web-development/vue-study/template-and-lifecycle) dạy bốn ký hiệu trên template, khác biệt `v-if` / `v-show`, và cặp hook mở rồi dọn.
+
+**Tài liệu gốc nên đọc kèm:**
+[Reactivity Fundamentals](https://vuejs.org/guide/essentials/reactivity-fundamentals.html),
+[Computed Properties](https://vuejs.org/guide/essentials/computed.html),
+[Watchers](https://vuejs.org/guide/essentials/watchers.html).

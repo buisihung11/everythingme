@@ -1,0 +1,108 @@
+---
+title: 'Vue Study #14: Đọc một test Vue'
+description: Mental model của Vitest và Vue Test Utils. mount, text, emitted, props, và chỗ Testing Library nhìn khác.
+date: 2026-11-02
+type: technical
+category: web-development
+readTime: 14
+thumbnail: /thumbnails/vue-study.svg
+---
+
+<SeriesNav current="testing" />
+
+Bài 4 viết `Counter`: prop `label`, `defineModel` cho số, emit `reset`. Bài này đọc một test của đúng component đó và đoán assertion nào đang nói gì. `apps/blog` đã có Vitest, nhưng chưa có `@vue/test-utils`, nên bài không thêm file spec và không cài package. Test nằm đây để bạn copy.
+
+Cả bài xoay quanh một câu:
+
+> **mount render component với props của cha. Con emit thì emitted() thấy ngay. Chữ trên màn hình chỉ đổi khi test setProps lại.**
+
+Hai hình.
+
+<MemoryMap id="testing" />
+
+## 1. Đọc test của Counter [#read-test]
+
+Vue Test Utils đưa cho bạn một `wrapper`. Testing Library (trên Vue nó đứng trên chính Vue Test Utils) tìm theo vai trò người dùng: `getByRole('button', { name: 'Reset' })`. VTU nhìn thêm hợp đồng mà Bài 4 vừa viết: `props()` và `emitted()`. Cả hai chạy bằng Vitest. Chọn VTU khi thứ bạn cần khóa là event. Chọn Testing Library khi thứ bạn cần khóa là những gì người dùng đọc và bấm.
+
+`defineModel<number>()` emit `update:modelValue`. `mount` không giữ `v-model` hộ cha. Bấm tăng: `emitted('update:modelValue')[0]` là `[3]`, còn `text()` vẫn có `"2"` cho tới khi test làm việc của cha:
+
+```ts
+await wrapper.setProps({ modelValue: 3 })
+```
+
+`get` ném lỗi nếu không có đúng một node. `find` trả `null`. Dùng `get` khi thiếu nút là thất bại của test.
+
+<CounterTestReader />
+
+Bấm từng dòng. Dòng assertion cuối không nói "màn hình đã thành 3". Nó nói "con đã đề nghị cha thành 3".
+
+## 2. Chọn assertion [#assertion]
+
+Bốn cửa, đừng lấy nhầm:
+
+| Cần biết | Hàm |
+| --- | --- |
+| Người dùng đọc được chữ gì | `wrapper.text()` |
+| Đã emit event nào, với đối số gì | `wrapper.emitted('reset')` |
+| Cha đã truyền prop gì | `wrapper.props('label')` |
+| Có đúng một node khớp selector không | `wrapper.get(...)` |
+
+`emitted('reset')` là mảng các lần gọi. Mỗi lần gọi là một mảng đối số. `toBeTruthy()` chỉ hỏi "có ít nhất một lần". `toEqual([[]])` hỏi "một lần, không đối số". Với `update:modelValue`, lần đầu là `[[3]]` nếu bạn so cả mảng, hoặc `[3]` nếu bạn lấy `[0]`.
+
+<AssertionPicker />
+
+<Callout type="warn" title="Bug: kỳ vọng text đổi ngay sau click v-model">
+  Con không giữ số. Nó emit. Test mà không `setProps` thì `text()` vẫn là số cũ, và assertion trên `text()` fail dù emit đã đúng. Khóa emit khi hợp đồng là event. Khóa text khi hợp đồng là chữ trên màn hình.
+</Callout>
+
+## Ôn tập [#on-tap]
+
+Lật thẻ nhớ trước, rồi làm quiz.
+
+<Flashcards id="testing" />
+
+## Quiz cuối bài [#quiz]
+
+Năm câu. Đặt mục tiêu ít nhất 4/5.
+
+<Quiz id="testing" />
+
+## Bài tập 12 phút [#bai-tap]
+
+Viết một file `TagInput.spec.ts` cho `TagInput` của Bài 5. Đây là cả bài tập, copy rồi tự đổi `max` nếu muốn thấy fail:
+
+```ts
+import { mount } from '@vue/test-utils'
+import { describe, expect, it } from 'vitest'
+import TagInput from './TagInput.vue'
+
+describe('TagInput', () => {
+  it('emits limit and keeps the first tag', async () => {
+    const wrapper = mount(TagInput, {
+      props: { modelValue: [], max: 1 },
+    })
+
+    const input = wrapper.get('input')
+    await input.setValue('a')
+    await input.trigger('keydown.enter')
+    await input.setValue('b')
+    await input.trigger('keydown.enter')
+
+    const updates = wrapper.emitted('update:modelValue')
+    expect(updates?.[0]).toEqual([['a']])
+    expect(wrapper.emitted('limit')).toBeTruthy()
+    expect(updates).toHaveLength(1)
+  })
+})
+```
+
+Thắng lợi: một test khóa đúng hợp đồng của TagInput. Tag thứ hai không thành lần `update:modelValue` thứ hai, và `limit` đã được emit. Repo này chưa chạy file này, vì chưa có `@vue/test-utils`.
+
+## Bài tiếp theo [#bai-tiep-theo]
+
+[Bài 15, **Performance đúng chỗ**](/blog/technical/web-development/vue-study/performance) chọn giữa `:key`, `KeepAlive`, `v-memo` và `shallowRef`. Hết bài đó là hết phần thực hành của series.
+
+**Tài liệu gốc nên đọc kèm:**
+[Testing](https://vuejs.org/guide/scaling-up/testing.html),
+[Vue Test Utils](https://test-utils.vuejs.org/guide/),
+[Vitest](https://vitest.dev/guide/).

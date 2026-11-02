@@ -1,0 +1,98 @@
+---
+title: 'Vue Study #15: Performance đúng chỗ'
+description: Chọn :key, KeepAlive, v-memo hoặc shallowRef. Mỗi công cụ một việc, và v-memo chỉ khi kể được dependency.
+date: 2026-11-02
+type: technical
+category: web-development
+readTime: 16
+thumbnail: /thumbnails/vue-study.svg
+---
+
+<SeriesNav current="performance" />
+
+Bài 6 đã nói `shallowRef` canh cửa `.value`, không canh bên trong. Bài 3 đã nói `v-if` hủy instance, `v-show` chỉ kéo rèm. Bài này không đo lại từ đầu. Nó chọn đúng công cụ cho ba tình huống hay bị vá nhầm.
+
+Cả bài xoay quanh một câu:
+
+> **Key giữ đúng dòng. KeepAlive giữ instance khi bạn chuyển view. v-memo chỉ khi bạn kể được deps. List lớn bất biến thì shallowRef.**
+
+Ba hình.
+
+<MemoryMap id="performance" />
+
+## 1. Ba tình huống [#pick-tool]
+
+Vue không render lại component con khi props của con không đổi. Cha render không kéo cả cây như React. Vì vậy một lớp bọc kiểu `React.memo` hiếm khi là việc đầu tiên. `v-memo` làm việc khác: chính component này đang render, và bạn muốn bỏ qua một khúc template của nó.
+
+`v-for` mặc định vá element tại chỗ. Không có `:key` ổn định, ô input dính ở index cũ khi bạn đảo list. `:key="item.id"` bảo Vue chuyển đúng node. `:key="index"` thì không, vì index của vị trí không đổi khi hai món đổi chỗ. Cùng quy tắc `key` của React.
+
+List 5.000 dòng mà mỗi lần fetch là một mảng mới, không `push` từng phần tử: đó là `shallowRef` của Bài 6. Gán `list.value = rows`. `v-memo` không bỏ được chi phí Proxy sâu.
+
+<PerfToolPicker />
+
+Đo trước khi thêm `v-memo`. Tài liệu Vue nói directive này là tối ưu nhỏ, thường chỉ đáng trên `v-for` dài (họ nêu ngưỡng khoảng hơn 1.000 dòng), và phải đứng cùng element với `v-for`.
+
+## 2. KeepAlive và v-if [#keep-alive]
+
+`<KeepAlive>` bọc một component động. Chuyển sang view khác thì instance cũ không unmount: nó `onDeactivated`, rồi `onActivated` khi quay lại. State bên trong, gồm bản nháp của một editor, còn đó. `v-if` trần thì unmount, bản nháp mất. `v-show` cũng giữ state, và không cần KeepAlive, vì instance không rời DOM. Editor nặng mà bạn muốn tháo hẳn khỏi DOM thì mới tới KeepAlive.
+
+Cache sống cùng instance của `<KeepAlive>`. Đặt `v-if` lên chính thẻ KeepAlive thì tắt là unmount cả tủ, bật lại là tủ mới. `v-if` phải ở component bên trong, hoặc bạn dùng `<component :is>` như tài liệu.
+
+```vue
+<KeepAlive>
+  <Editor v-if="tab === 'edit'" />
+  <Preview v-else />
+</KeepAlive>
+```
+
+Chỉ một con được render tại một thời điểm. Hai con cùng hiện thì KeepAlive không nhận.
+
+<KeepAliveSwitch />
+
+## 3. v-memo thiếu deps [#v-memo]
+
+`v-memo` nhận một mảng. Mọi phần tử giống lần render trước thì Vue bỏ qua cả khúc template, kể cả việc tạo vnode. Mảng rỗng thì giống `v-once`: vẽ một lần rồi thôi.
+
+```vue
+<div v-for="item in list" :key="item.id" v-memo="[item.id === selected]">
+  {{ item.name }}
+</div>
+```
+
+`:key` đã được Vue lấy làm phụ thuộc thêm khi `v-memo` đứng cạnh `v-for`, nên không cần nhét `item.id` vào mảng. Bạn vẫn phải kể những gì làm dòng đó đổi hình, ví dụ `item.name`. Quên `name` thì chọn dòng khác sẽ vẽ lại, còn đổi tên lúc dòng không đổi trạng thái selected thì DOM giữ chữ cũ.
+
+<MemoDepGap />
+
+<Callout type="warn" title="Bug: v-if bọc KeepAlive, hoặc v-memo thiếu một dep">
+  `v-if` trên `<KeepAlive>` hủy cache. Đặt điều kiện bên trong. `v-memo="[selected]"` mà tên cũng đổi thì UI đứng tên cũ. Không kể hết được deps thì đừng dùng v-memo.
+</Callout>
+
+## Ôn tập [#on-tap]
+
+Lật thẻ nhớ trước, rồi làm quiz.
+
+<Flashcards id="performance" />
+
+## Quiz cuối bài [#quiz]
+
+Năm câu. Đặt mục tiêu ít nhất 4/5.
+
+<Quiz id="performance" />
+
+## Bài tập 15 phút [#bai-tap]
+
+Mở [Vue SFC Playground](https://play.vuejs.org/) và viết một list ba dòng. Mỗi dòng có `id`, `label`, và một `<input>` gắn với chữ người dùng gõ. Nút "Đảo" đảo mảng. Làm hai lần: `:key="index"` thì chữ dính ở vị trí, `:key="item.id"` thì chữ đi theo món. Giữ bản dùng `item.id`.
+
+Thắng lợi: một list đảo được mà input không nhảy nhầm dòng.
+
+## Hết phần thực hành [#bai-tiep-theo]
+
+Mười lăm bài, từ mô hình gốc tới chỗ đặt file. Lộ trình thực hành của series dừng ở đây.
+
+Quay lại [mục lục Vue Study](/blog/technical/web-development/vue-study) để ôn hình nào còn mờ. Nếu muốn xem lại toàn cảnh, gồm video ngắn và Feature-Sliced Design, đọc [Vue 3 for Senior React Developers](/blog/technical/web-development/vue-for-react-developers).
+
+**Tài liệu gốc nên đọc kèm:**
+[List rendering: key](https://vuejs.org/guide/essentials/list.html#maintaining-state-with-key),
+[KeepAlive](https://vuejs.org/guide/built-ins/keep-alive.html),
+[v-memo](https://vuejs.org/api/built-in-directives.html#v-memo),
+[shallowRef()](https://vuejs.org/api/reactivity-advanced.html#shallowref).

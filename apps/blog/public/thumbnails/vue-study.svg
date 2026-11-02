@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" role="img" aria-label="Vue Study">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#d1fae5"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="500" fill="url(#bg)"/>
+  <rect x="120" y="110" width="560" height="280" rx="16" fill="#0f172a" opacity="0.88"/>
+  <path d="M400 330 L330 200 H360 L400 274 L440 200 H470 Z" fill="#42b883"/>
+  <path d="M400 274 L360 200 H382 L400 236 L418 200 H440 Z" fill="#35495e"/>
+  <rect x="160" y="150" width="96" height="44" rx="10" fill="none" stroke="#6ee7b7" stroke-width="3" stroke-dasharray="7 5"/>
+  <rect x="544" y="150" width="96" height="44" rx="10" fill="#10b981" opacity="0.55"/>
+  <path d="M256 172 C300 172 300 172 330 200" fill="none" stroke="#6ee7b7" stroke-width="3"/>
+  <path d="M470 200 C500 172 500 172 544 172" fill="none" stroke="#6ee7b7" stroke-width="3"/>
+  <rect x="160" y="320" width="120" height="8" rx="4" fill="#6ee7b7" opacity="0.7"/>
+  <rect x="520" y="320" width="120" height="8" rx="4" fill="#6ee7b7" opacity="0.45"/>
+</svg>

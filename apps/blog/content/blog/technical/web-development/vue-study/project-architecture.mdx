@@ -1,0 +1,86 @@
+---
+title: 'Vue Study #13: Kiến trúc thư mục'
+description: Đặt cart vào pages, widgets, features, entities và shared. Import chỉ đi xuống, không đi cùng tầng.
+date: 2026-11-02
+type: technical
+category: web-development
+readTime: 14
+thumbnail: /thumbnails/vue-study.svg
+---
+
+<SeriesNav current="project-architecture" />
+
+Bài 12 có route. Bài 10 có store. Bài này cho chúng một chỗ trong cây thư mục. Cùng quy tắc với phần Feature-Sliced Design trong bài [Vue 3 for Senior React Developers](/blog/technical/web-development/vue-for-react-developers): xếp theo hướng phụ thuộc, không theo đuôi file.
+
+Cả bài xoay quanh một câu:
+
+> **Tầng trên được import tầng dưới. Cùng tầng thì không trỏ nhau. Giỏ chỉ một trang dùng thì hãy để nó trong trang đó.**
+
+Hai hình.
+
+<MemoryMap id="project-architecture" />
+
+## 1. Đặt cart vào từng tầng [#cart-tree]
+
+Feature-Sliced Design có layer, slice và segment. `features/add-to-cart/model/useCartStore.ts` thì layer là `features`, slice là `add-to-cart`, segment là `model`. `app` và `shared` không có slice, chỉ có segment.
+
+Một thư mục `components/`, `composables/`, `stores/` gom theo công nghệ. Một feature bị xé ra nhiều nơi. Đoạn dưới là cart khi header và trang cart cùng cần nó. Nếu mới chỉ một trang, bỏ widget và feature, để trong `pages/cart` cho tới khi có người dùng thứ hai.
+
+| Tầng | File | Việc |
+| --- | --- | --- |
+| pages | `pages/cart/ui/CartPage.vue` | Ghép các khối cho route `/cart` |
+| widgets | `widgets/cart-summary/ui/CartSummary.vue` | Khối giỏ dùng lại ở header và ở trang |
+| features | `features/add-to-cart/ui/AddButton.vue` | Hành động "thêm món" |
+| entities | `entities/product/ui/ProductCard.vue` | Danh từ Product: type và cách hiện |
+| shared | `shared/ui/Button.vue` | Nút không biết giỏ là gì |
+
+`createPinia()` nằm ở `app`. Hàm `useCartStore` nằm ở `model` của slice đang sở hữu giỏ: feature, nếu chỉ một hành động sửa giỏ, hoặc `entities/cart` khi nhiều hành động cùng sửa. FSD không chọn hộ bạn giữa ref local, provide và store. Bài 8 đến bài 11 mới là chỗ chọn.
+
+<FsdCartTree />
+
+Ra ngoài slice thì import qua `index.ts`, và chỉ export thứ người ngoài cần. File bên trong slice không import barrel của chính nó, kẻo thành vòng.
+
+## 2. Chiều import [#import-rule]
+
+Trong một slice, các segment import tương đối cho nhau. Ra ngoài, mũi tên chỉ đi xuống:
+
+- page được dùng widget, feature, entity, shared
+- widget được dùng feature, entity, shared
+- feature được dùng entity và shared
+- entity được dùng shared
+- shared không biết nghiệp vụ
+
+Hai slice cùng tầng không import nhau. `add-to-cart` không import `remove-line`, cùng lý do `complete-task` không import `delete-task` trong bài tổng quan. Page hoặc widget phía trên ghép cả hai. Entity không import feature: `ProductCard` nhận một slot hành động, page quyết định slot đó là `AddButton`.
+
+<ImportBoundary />
+
+<Callout type="warn" title="Bug: entity import feature, hoặc hai feature import nhau">
+  `entities/product` import `AddButton` là mũi tên đi lên. `features/add-to-cart` import `features/remove-line` là cùng tầng. Kéo chỗ ghép lên page hoặc widget. Public API là `index.ts` của slice thấp hơn.
+</Callout>
+
+## Ôn tập [#on-tap]
+
+Lật thẻ nhớ trước, rồi làm quiz.
+
+<Flashcards id="project-architecture" />
+
+## Quiz cuối bài [#quiz]
+
+Năm câu. Đặt mục tiêu ít nhất 4/5.
+
+<Quiz id="project-architecture" />
+
+## Bài tập 12 phút [#bai-tap]
+
+Mở [Vue SFC Playground](https://play.vuejs.org/) và tạo đúng năm file đường dẫn ở bảng trên, mỗi file một dòng export hoặc một component rỗng. `CartPage.vue` chỉ import `CartSummary` và `AddButton` qua barrel. `ProductCard.vue` có slot `actions` và không import feature. Thử thêm một import từ `entities/product` sang `features/add-to-cart` rồi xóa nó: đó là mũi tên bị cấm.
+
+Thắng lợi: một trang cart mà chiều import chỉ đi xuống.
+
+## Bài tiếp theo [#bai-tiep-theo]
+
+[Bài 14, **Đọc một test Vue**](/blog/technical/web-development/vue-study/testing) nhìn `Counter` của Bài 4 qua Vitest và Vue Test Utils: mount, text, emitted.
+
+**Tài liệu gốc nên đọc kèm:**
+[Feature-Sliced Design](https://feature-sliced.design/docs/get-started/overview),
+[Layers](https://feature-sliced.design/docs/reference/layers),
+[Public API](https://feature-sliced.design/docs/reference/public-api).

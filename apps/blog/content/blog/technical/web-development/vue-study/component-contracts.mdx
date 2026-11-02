@@ -1,0 +1,175 @@
+---
+title: 'Vue Study #4: Hợp đồng props, emits, v-model'
+description: defineProps, defineEmits và defineModel, nhìn một component như thiết bị có ổ cắm, để viết component cho người khác dùng.
+date: 2026-11-02
+type: technical
+category: web-development
+readTime: 18
+thumbnail: /thumbnails/vue-study.svg
+---
+
+<SeriesNav current="component-contracts" />
+
+Ba bài trước đủ để đọc một file `.vue`. Bài này đủ để **viết component cho người khác dùng**. Sau bài này, bạn sẽ khai báo props và emits chặt bằng TypeScript, và viết được component hỗ trợ `v-model`. Slot và attribute rơi xuống root là bài sau.
+
+Cả bài xoay quanh một câu:
+
+> **Một component là một thiết bị có ổ cắm. Props cắm vào, sự kiện báo ra, v-model là ống hai chiều.**
+
+Bốn hình. Bấm vào một ô để nhảy tới phần tương ứng.
+
+<MemoryMap id="component-contracts" />
+
+## 1. Hợp đồng: một thiết bị có ổ cắm [#hop-dong]
+
+Ở React, giao diện của một component chỉ có một thứ: kiểu của props. Dữ liệu, callback, `children`, render prop, `className`, tất cả đều là props. Vue tách giao diện đó ra thành vài loại ổ cắm, mỗi loại có cú pháp riêng ở cả hai phía:
+
+| Bạn muốn | React | Vue |
+| --- | --- | --- |
+| Truyền dữ liệu xuống | props | props, khai báo bằng `defineProps` |
+| Con báo lên cho cha | callback `onSearch` | `emit('search')`, cha nghe bằng `@search` |
+| Ràng buộc hai chiều | `value` + `onChange` | `v-model`, con dùng `defineModel` |
+| Truyền một mẩu giao diện | `children`, prop kiểu `ReactNode` | slot, [Bài 5](/blog/technical/web-development/vue-study/slots-and-attrs) |
+| `className`, `id`, `aria-*` | tự gom `...rest` rồi rải ra | fallthrough attributes, [Bài 5](/blog/technical/web-development/vue-study/slots-and-attrs) |
+
+<ContractDiagram />
+
+Luồng dữ liệu vẫn một chiều như React. Hình ảnh để nhớ: **nước chảy xuống, khói bay lên**.
+
+<PropsEmitsFlow />
+
+Tách ổ cắm như vậy có hai cái lợi. Thứ nhất, chỉ cần đọc khối `script setup` của con là biết đầy đủ hợp đồng của nó. Thứ hai, Vue Language Tools và `vue-tsc` kiểm tra kiểu được ở cả hai phía.
+
+## 2. defineProps: ổ cắm vào [#props]
+
+`defineProps` là compiler macro, không cần import. Có hai cách khai báo:
+
+- **Bằng type** (nên dùng khi có TypeScript): `defineProps<{ label: string; size?: 'sm' | 'md' }>()`. Compiler đọc type và sinh ra khai báo runtime tương ứng: `label` thành `{ type: String, required: true }`.
+- **Runtime**: `defineProps({ size: { type: String, default: 'md', validator: ... } })`. Dài hơn, nhưng có `validator` chạy lúc chạy thật.
+
+Từ Vue 3.5, bạn có thể **destructure** props ngay khi khai báo, kèm giá trị mặc định, mà không mất reactivity. Compiler tự đổi mọi chỗ dùng `size` thành `props.size`. Trước 3.5, giá trị mặc định phải viết qua `withDefaults`.
+
+Ba điều hay làm người từ React bất ngờ, cả ba đều có trong hình dưới:
+
+1. **Prop boolean vắng mặt là `false`**, không phải `undefined`. Viết attribute không có giá trị (`<MyButton disabled />`) nghĩa là `true`, giống HTML.
+2. **Thiếu dấu `:` thì luôn là chuỗi.** `count="3"` là chuỗi `"3"`, còn `disabled="false"` là chuỗi `"false"`, một giá trị truthy.
+3. **Kiểu literal union chỉ được kiểm tra lúc build.** `size?: 'sm' | 'md' | 'lg'` sinh ra `{ type: String }` lúc chạy. Truyền `"xl"` thì `vue-tsc` báo lỗi, còn trình duyệt im lặng.
+
+<PropsPlayground />
+
+```vue
+<script setup lang="ts">
+const {
+  label,
+  size = 'md',       // giá trị mặc định ngay trong destructure (Vue 3.5+)
+  disabled = false,
+} = defineProps<{
+  label: string
+  size?: 'sm' | 'md' | 'lg'
+  disabled?: boolean
+}>()
+</script>
+
+<template>
+  <button :class="`btn btn-${size}`" :disabled="disabled">{{ label }}</button>
+</template>
+```
+
+Về tên: khai báo bằng camelCase (`greetingMessage`), cha viết kebab-case (`greeting-message="..."`) hay camelCase đều được. Quy ước phổ biến là kebab-case trong template, giống attribute HTML.
+
+<Callout type="warn" title="Bug: sửa object nằm trong prop">
+  Props chỉ readonly ở lớp ngoài cùng. Gán `props.user = x` thì Vue cảnh báo, nhưng `props.user.name = 'x'` thì lọt qua im lặng, vì object đó là của cha. Con vừa sửa state của cha mà cha không hề biết. Hãy emit một sự kiện, hoặc tạo bản sao cục bộ nếu con cần một nháp riêng để chỉnh.
+</Callout>
+
+## 3. defineEmits: đèn báo chỉ sáng một tầng [#emits]
+
+Ở React, con báo lên bằng cách gọi callback cha truyền xuống. Ở Vue, con **phát sự kiện** bằng `emit`, cha **nghe** bằng `@ten-su-kien`. Cha không phải truyền hàm xuống, và con không cần biết có ai đang nghe hay không.
+
+Khai báo bằng type theo kiểu tuple có tên (Vue 3.3+) cho bạn kiểm tra kiểu cả tên sự kiện lẫn payload:
+
+```vue
+<script setup lang="ts">
+const { product } = defineProps<{ product: Product }>()
+
+const emit = defineEmits<{
+  addToCart: [id: number, qty: number]
+  close: []
+}>()
+
+function add() {
+  emit('addToCart', product.id, 1)  // ✓
+  // emit('addToCart', '1')         // ✗ lỗi kiểu: thiếu qty, id phải là number
+}
+</script>
+```
+
+Điểm khác lớn nhất so với sự kiện DOM: **sự kiện của component không nổi bọt.** Nó chỉ tới cha trực tiếp.
+
+<EventBubbling />
+
+Khai báo `defineEmits` không chỉ để có kiểu. Sự kiện đã khai báo sẽ không bị coi là fallthrough attribute ([Bài 5](/blog/technical/web-development/vue-study/slots-and-attrs)), nên listener của cha không bị gắn nhầm lên phần tử root như một listener DOM thông thường.
+
+<Callout type="warn" title="Bug: emit tên trùng với sự kiện gốc mà không khai báo">
+  Component emit `'click'` nhưng quên khai báo trong `defineEmits`. Cha viết `@click="save"`. Vì `click` không được khai báo, Vue gắn `save` lên root như listener DOM thật, và con cũng emit `click`. Kết quả: `save` chạy hai lần cho một cú bấm. Luôn khai báo mọi sự kiện mà component phát ra.
+</Callout>
+
+## 4. defineModel: ống hai chiều [#define-model]
+
+`v-model` trên component chỉ là cú pháp viết gọn của một cặp: prop `modelValue` đi xuống và event `update:modelValue` đi lên. Từ Vue 3.4, `defineModel()` gói cả cặp đó vào một ref: đọc `model.value` là đọc prop, ghi `model.value = x` là emit lên cha. Bạn có thể gắn ref đó thẳng vào `v-model` của một input bên trong.
+
+<ModelExpander />
+
+Một component có thể có nhiều v-model, mỗi cái một tên:
+
+```vue
+<!-- Cha -->
+<DateRange v-model:start="from" v-model:end="to" />
+
+<!-- DateRange.vue -->
+<script setup lang="ts">
+const start = defineModel<string>('start', { required: true })
+const end = defineModel<string>('end', { required: true })
+</script>
+
+<template>
+  <input type="date" v-model="start" />
+  <input type="date" v-model="end" />
+</template>
+```
+
+So với React: đây chính là controlled component (`value` cộng `onChange`), chỉ là gom vào một cú pháp. Luồng dữ liệu vẫn một chiều. Con không bao giờ sửa thẳng state của cha, `defineModel` chỉ viết hộ phần `emit` cho bạn.
+
+<Callout type="warn" title="Bug: default của defineModel làm cha và con lệch nhau">
+  `defineModel({ default: 1 })` trong khi cha viết `v-model="myRef"` với `myRef` đang là `undefined`. Con hiển thị 1, còn cha vẫn giữ `undefined`, cho tới khi con emit lần đầu. Nếu giá trị là bắt buộc, dùng `{ required: true }` và để cha khởi tạo giá trị.
+</Callout>
+
+## Ôn tập [#on-tap]
+
+Lật thẻ nhớ trước, rồi làm quiz.
+
+<Flashcards id="component-contracts" />
+
+## Quiz cuối bài [#quiz]
+
+Sáu câu. Đặt mục tiêu ít nhất 5/6 trước khi sang Bài 5.
+
+<Quiz id="component-contracts" />
+
+## Bài tập 15 phút [#bai-tap]
+
+Mở [Vue SFC Playground](https://play.vuejs.org/) và viết hai file:
+
+1. `Counter.vue` nhận `label` qua `defineProps`, nhận số đếm qua `defineModel<number>({ required: true })`, có nút emit `reset`.
+2. `App.vue` viết `<Counter v-model="count" label="Điểm" @reset="count = 0" />`.
+
+Thắng lợi: một component người khác dùng được, với ổ vào, đèn báo, và ống hai chiều.
+
+## Bài tiếp theo [#bai-tiep-theo]
+
+[Bài 5, **Slot và fallthrough**](/blog/technical/web-development/vue-study/slots-and-attrs) hoàn thiện hợp đồng: cha lắp nội dung vào lỗ, và những attribute không khai báo rơi xuống đâu.
+
+**Tài liệu gốc nên đọc kèm:**
+[Props](https://vuejs.org/guide/components/props.html),
+[Component Events](https://vuejs.org/guide/components/events.html),
+[Component v-model](https://vuejs.org/guide/components/v-model.html),
+[TypeScript with Composition API](https://vuejs.org/guide/typescript/composition-api.html).

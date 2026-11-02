@@ -1,0 +1,75 @@
+---
+title: 'Vue Study #1: Mô hình gốc'
+description: React chụp ảnh, Vue ghi sổ. Giải phẫu một SFC thành não, mặt, áo, để đọc được mọi file .vue.
+date: 2026-11-02
+type: technical
+category: web-development
+readTime: 12
+thumbnail: /thumbnails/vue-study.svg
+---
+
+<SeriesNav current="vue-fundamentals" />
+
+Sau bài này, bạn sẽ mở một file `.vue` và chỉ được đúng hai việc: biết khối nào làm gì, và giải thích vì sao `script setup` không chạy lại mỗi lần bấm nút.
+
+Cả bài xoay quanh một câu:
+
+> **Trong Vue, bạn khai báo dữ liệu một lần. Vue ghi nhớ ai đọc dữ liệu đó, và khi dữ liệu đổi, chỉ những người đã đọc mới được báo.**
+
+Hai hình ảnh của bài. Bấm vào một ô để nhảy tới phần tương ứng.
+
+<MemoryMap id="vue-fundamentals" />
+
+## 1. Mô hình gốc: React chụp ảnh, Vue ghi sổ [#mo-hinh-goc]
+
+Trong React, mỗi lần render là một lần **gọi lại hàm component**. State là một bức ảnh chụp (snapshot) của đúng lần render đó. Muốn biết UI mới trông thế nào, React chạy lại hàm, rồi so sánh kết quả với lần trước.
+
+Trong Vue, phần `script setup` **chỉ chạy một lần** khi component được tạo. Sau đó Vue không cần chạy lại nó, vì Vue đã ghi sổ: render của component này đọc `count`, `computed` kia đọc `price`. Khi `count` đổi, Vue tra sổ và chỉ chạy lại những gì đã đọc `count`.
+
+<RenderModelCompare />
+
+Hệ quả thực tế khi bạn chuyển từ React sang:
+
+- **Không có dependency array.** Vue tự biết phụ thuộc vì đã ghi sổ lúc đọc, nên không có `useCallback` và không có cảnh quên khai báo dependency.
+- **Không có stale closure.** Một hàm khai báo trong `setup` luôn đọc giá trị mới nhất qua `count.value`, không có bức ảnh cũ nào bị giữ lại.
+- **Component con không render lại theo cha một cách mặc định.** Con chỉ render lại khi props của nó, hoặc dữ liệu chính nó đọc, thay đổi.
+
+Vue vẫn dùng virtual DOM như React. Điểm khác là Vue biết chính xác component nào cần render lại, và compiler đánh dấu sẵn phần nào trong template là động.
+
+## 2. Giải phẫu một SFC: Não, Mặt, Áo [#sfc]
+
+Một file `.vue` được gọi là **Single-File Component (SFC)**. Nó có ba khối, và mỗi khối có đúng một việc.
+
+<SfcAnatomy />
+
+Nếu bạn quen JSX: hãy coi `template` là JSX mà compiler đọc hiểu được, và `script setup` là thân hàm component chạy một lần. Mọi thứ khai báo ở top-level của `script setup` (biến, hàm, component đã import) đều dùng được ngay trong template, không cần `return` hay `export`.
+
+## Ôn tập [#on-tap]
+
+Ôn theo hai bước. Lật thẻ nhớ trước để gợi lại từng hình ảnh, rồi làm quiz.
+
+<Flashcards id="vue-fundamentals" />
+
+## Quiz cuối bài [#quiz]
+
+Bốn câu, phủ hai hình của bài. Đặt mục tiêu ít nhất 3/4 trước khi sang Bài 2.
+
+<Quiz id="vue-fundamentals" />
+
+## Bài tập 12 phút [#bai-tap]
+
+Mở [Vue SFC Playground](https://play.vuejs.org/) và tự viết một `Counter.vue`:
+
+1. `script setup` khai báo `const count = ref(0)` và `function inc() { count.value++ }`. Thêm `console.log('setup')` ngay dưới import.
+2. `template` có một nút `@click="inc"` và `{{ count }}`.
+3. Bấm nút vài lần. Trong console, chữ `setup` chỉ in **một lần**. Nếu in lại mỗi lần bấm, bạn đang viết như React.
+
+Đó là thắng lợi của bài này: nhìn thấy setup chạy một lần, và đọc được ba khối của một SFC.
+
+## Bài tiếp theo [#bai-tiep-theo]
+
+[Bài 2, **Hộp, gác cổng, bảng tính**](/blog/technical/web-development/vue-study/reactive-state) biến câu "Vue ghi sổ" thành công cụ hằng ngày: `ref`, `reactive`, `computed` và `watch`.
+
+**Tài liệu gốc nên đọc kèm:**
+[Reactivity Fundamentals](https://vuejs.org/guide/essentials/reactivity-fundamentals.html),
+[Single-File Components](https://vuejs.org/guide/scaling-up/sfc.html).

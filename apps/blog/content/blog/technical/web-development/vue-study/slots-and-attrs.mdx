@@ -1,0 +1,137 @@
+---
+title: 'Vue Study #5: Slot và fallthrough'
+description: Default slot, named slot, scoped slot và fallthrough attributes, để cha tùy biến giao diện mà không thêm hàng chục prop.
+date: 2026-11-02
+type: technical
+category: web-development
+readTime: 15
+thumbnail: /thumbnails/vue-study.svg
+---
+
+<SeriesNav current="slots-and-attrs" />
+
+Bài 4 đã có ổ vào, đèn báo, ống hai chiều. Còn thiếu hai ổ: lỗ để cha lắp nội dung, và chỗ rơi của những attribute không khai báo. Sau bài này, bạn sẽ thiết kế slot thay vì thêm `titleIcon` / `titleBadge`, và kiểm soát được `class`, `placeholder`, `aria-*` khi root không phải chỗ nên nhận chúng.
+
+Cả bài xoay quanh một câu:
+
+> **Slot là lỗ để cha lắp nội dung. Attribute không khai báo rơi xuống phần tử root.**
+
+Ba hình. Bấm vào một ô để nhảy tới phần tương ứng.
+
+<MemoryMap id="slots-and-attrs" />
+
+## 1. Slots: con chừa lỗ, cha lắp nội dung [#slots]
+
+Slot giải quyết một vấn đề quen thuộc: component Card cần một tiêu đề có icon, rồi một tiêu đề có badge, rồi một tiêu đề có nút. Thay vì thêm prop `title`, `titleIcon`, `titleBadge`, con **chừa một lỗ** và để cha lắp bất cứ thứ gì vào.
+
+- `<slot />` là lỗ mặc định (default slot), tương đương `children` của React.
+- `<slot name="header" />` là lỗ có tên. Cha lắp bằng `<template #header>`, với `#header` là viết tắt của `v-slot:header`.
+- Nội dung giữa `<slot>` và `</slot>` là **fallback**, hiện ra khi cha không lắp gì.
+- `$slots.header` (trong template) hoặc `useSlots()` (trong script) cho biết cha có lắp lỗ đó hay không.
+
+<SlotHoles />
+
+```vue
+<!-- PageLayout.vue -->
+<template>
+  <div class="layout">
+    <header v-if="$slots.header"><slot name="header" /></header>
+    <main><slot /></main>
+    <aside><slot name="sidebar">Không có gì ở đây</slot></aside>
+  </div>
+</template>
+```
+
+Quy tắc về scope cần thuộc lòng, vì nó dẫn thẳng tới phần tiếp theo: **mọi thứ trong template của cha được biên dịch trong scope của cha**, kể cả phần nằm giữa thẻ mở và thẻ đóng của con. Nội dung slot đọc được biến của cha, không đọc được biến của con.
+
+## 2. Scoped slots: lỗ có đèn chiếu ngược [#scoped-slots]
+
+Đôi khi cha cần vẽ một phần giao diện bằng **dữ liệu của con**. Ví dụ một DataList lo việc lặp, phân trang và trạng thái đang chọn, nhưng muốn cha tự quyết định mỗi dòng trông thế nào. Con chiếu dữ liệu lên qua lỗ: `<slot :item="item" />`. Cha hứng lấy: `<template #default="{ item }">`. Các attribute con đặt lên `<slot>` gọi là **slot props**.
+
+<ScopedSlotLens />
+
+```vue
+<!-- Cha -->
+<DataTable :rows="users" :columns="['name', 'email']">
+  <template #cell-email="{ value }">
+    <a :href="`mailto:${value}`">{{ value }}</a>
+  </template>
+  <template #empty>Chưa có người dùng</template>
+</DataTable>
+
+<!-- Trong DataTable.vue, mỗi ô -->
+<slot :name="`cell-${col}`" :value="row[col]">{{ row[col] }}</slot>
+```
+
+Với TypeScript, khai báo kiểu slot props bằng `defineSlots` (Vue 3.3+), và dùng `generic="T"` trên thẻ `script setup` để `item` ở phía cha có đúng kiểu của mảng truyền vào.
+
+So với React: scoped slot chính là render prop. React từng dùng render prop rất nhiều cho các component chỉ cung cấp logic (headless), rồi chuyển sang custom hook. Vue cũng vậy: nếu một component chỉ đưa dữ liệu lên mà không vẽ gì, nhiều khả năng nó nên là một composable. Bài Composables sẽ nói về chuyện này.
+
+<Callout type="warn" title="Bug: v-slot trên component lẫn với template #name">
+  `<List v-slot="{ item }">` chỉ dùng được khi component chỉ có slot default. Nếu còn thêm `<template #empty>` bên trong, compiler báo lỗi vì không xác định được scope. Khi có nhiều slot, viết rõ từng cái: `<template #default="{ item }">` và `<template #empty>`.
+</Callout>
+
+## 3. Fallthrough attributes: rơi xuống root [#attrs]
+
+Attribute và listener mà cha truyền vào nhưng con **không khai báo** là prop hay emit được gọi là fallthrough attributes. Chúng nằm trong `$attrs`, và mặc định Vue gắn chúng lên phần tử root của con:
+
+- `class` và `style` được **gộp** với giá trị sẵn có của root, không ghi đè.
+- Listener như `@focus` trở thành listener DOM trên root.
+- Nếu root của con lại là một component khác, attrs được chuyển tiếp xuống component đó.
+
+Với component chỉ có một phần tử, đây là hành vi bạn muốn: `<BaseButton class="mt-4" aria-label="Đóng">` chạy đúng mà con không cần làm gì. Ở React, bạn phải tự gom `...rest` rồi rải lên phần tử. Vấn đề chỉ xuất hiện khi root không phải chỗ nên nhận attrs.
+
+<AttrsFallthrough />
+
+```vue
+<!-- BaseInput.vue -->
+<script setup lang="ts">
+defineOptions({ inheritAttrs: false })
+defineProps<{ label: string }>()
+const model = defineModel<string>()
+</script>
+
+<template>
+  <label class="field">
+    <span>{{ label }}</span>
+    <input v-model="model" v-bind="$attrs" />
+  </label>
+</template>
+```
+
+Trong script, `useAttrs()` trả về cùng object đó. Nó luôn phản ánh attrs mới nhất nhưng **không reactive**, nên đừng `watch` nó. Nếu cần phản ứng khi một attribute đổi, hãy khai báo nó thành prop.
+
+## Ôn tập [#on-tap]
+
+Lật thẻ nhớ trước, rồi làm quiz.
+
+<Flashcards id="slots-and-attrs" />
+
+## Quiz cuối bài [#quiz]
+
+Năm câu. Đặt mục tiêu ít nhất 4/5 trước khi sang Bài 6.
+
+<Quiz id="slots-and-attrs" />
+
+## Bài tập 15 phút [#bai-tap]
+
+Mở [Vue SFC Playground](https://play.vuejs.org/) và tự viết `TagInput.vue`, dùng như sau:
+
+```vue
+<TagInput v-model="tags" :max="5" placeholder="Thêm tag" class="w-full" @limit="warn" />
+```
+
+1. `tags` đi qua `defineModel<string[]>({ required: true })`. Nhấn Enter trong ô input thì thêm tag, và nhớ gán một mảng mới chứ đừng `push`.
+2. Prop `max` có mặc định là 10. Khi thêm quá `max`, emit sự kiện `limit`.
+3. Scoped slot `#tag="{ tag, remove }"` để cha tự vẽ mỗi tag. Fallback là một chip mặc định có nút ×.
+4. Root là một `div` bọc danh sách tag và ô input. Dùng `inheritAttrs: false` để `placeholder` và `class` nằm trên `input`.
+
+Thắng lợi: một component có đủ hợp đồng của Bài 4 và Bài 5, người khác tùy biến được giao diện từng tag.
+
+## Bài tiếp theo [#bai-tiep-theo]
+
+Bạn đã viết component. Lúc này mới đáng mở nắp người gác cổng. [Bài 6, **Khi UI không cập nhật**](/blog/technical/web-development/vue-study/reactivity-deep-dive) dạy đoán đúng nguyên nhân: sửa object gốc, destructure, `shallowRef`, `markRaw`.
+
+**Tài liệu gốc nên đọc kèm:**
+[Slots](https://vuejs.org/guide/components/slots.html),
+[Fallthrough Attributes](https://vuejs.org/guide/components/attrs.html).

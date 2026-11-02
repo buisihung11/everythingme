@@ -1,0 +1,124 @@
+---
+title: 'Vue Study #7: nextTick và effectScope'
+description: Batching, nextTick và effectScope, để đọc DOM đúng lúc và không để watcher chạy sau khi component đã unmount.
+date: 2026-11-02
+type: technical
+category: web-development
+readTime: 12
+thumbnail: /thumbnails/vue-study.svg
+---
+
+<SeriesNav current="tick-and-scope" />
+
+Bài 6 giải thích vì sao UI không cập nhật. Bài này giải thích **khi nào DOM thực sự đổi**, và **ai dọn các effect đang sống**. Sau bài này, bạn sẽ `await nextTick()` đúng chỗ, và không để watcher chạy sau khi component đã unmount.
+
+Cả bài xoay quanh một câu:
+
+> **Mọi lời báo được gom lại rồi xử lý một lần, vào cuối tick. Effect nằm trong một cái túi, dừng túi là dừng hết.**
+
+Hai hình. Bấm vào một ô để nhảy tới phần tương ứng.
+
+<MemoryMap id="tick-and-scope" />
+
+## 1. Chuyến xe cuối tick: batching, nextTick và flush [#lich-cap-nhat]
+
+Ở Bài 6, `trigger` được viết như thể nó chạy effect ngay lập tức. Thực tế, với render và watcher, `trigger` chỉ **đưa job vào hàng đợi**. Nếu job đó đã có trong hàng đợi, Vue bỏ qua. Sau khi code đồng bộ chạy xong, Vue **flush** hàng đợi ở microtask kế tiếp: chạy watcher `pre`, cập nhật component (cha trước con), rồi chạy watcher `post`.
+
+Hình ảnh để nhớ: **một chuyến xe buýt chạy vào cuối mỗi tick**. Ai lên xe trước thì có chỗ, ai lên sau mà đã có tên thì không cần lên nữa. Xe chạy một lần cho tất cả.
+
+<SchedulerTimeline />
+
+Ba quy tắc rút ra:
+
+1. **Sửa bao nhiêu lần trong một tick thì component cũng chỉ render một lần**, với giá trị cuối cùng. React 18 cũng tự gom setState, nhưng React chạy lại cả cây con, còn Vue chỉ cập nhật đúng component có phụ thuộc thay đổi.
+2. **Sửa state xong, DOM chưa đổi ngay.** Muốn đọc DOM mới thì `await nextTick()`. Đây là chỗ tương đương việc đọc DOM trong `useLayoutEffect` của React.
+3. **Watcher mặc định chạy trước khi DOM được patch.** Cần DOM mới trong callback thì dùng `flush: 'post'`.
+
+```ts
+const editing = ref(false)
+const input = useTemplateRef<HTMLInputElement>('input')
+
+async function startEdit() {
+  editing.value = true
+  await nextTick()      // chờ v-if tạo xong <input>
+  input.value?.focus()
+}
+```
+
+| Chế độ | Chạy khi nào | DOM trong callback | Dùng khi |
+| --- | --- | --- | --- |
+| `flush: 'pre'` (mặc định) | trong lần flush, trước khi component cập nhật | DOM cũ | hầu hết trường hợp |
+| `flush: 'post'` | trong lần flush, sau khi DOM đã patch | DOM mới | đo kích thước, scroll, thư viện DOM |
+| `flush: 'sync'` | ngay sau mỗi lần ghi, không gom | DOM cũ | rất hiếm, dễ làm chậm |
+
+<Callout type="warn" title="Bug: đọc DOM ngay sau khi đổi state">
+  `messages.value.push(msg)` rồi `list.scrollTop = list.scrollHeight` ngay dòng sau sẽ cuộn thiếu một tin nhắn, vì DOM chưa có dòng mới. Thêm `await nextTick()` ở giữa, hoặc đặt việc cuộn trong một watcher `flush: 'post'`.
+</Callout>
+
+## 2. Cái túi gom effect: effectScope [#effect-scope]
+
+Mỗi effect là một thứ đang sống: nó giữ tham chiếu tới dữ liệu và sẽ chạy mỗi khi dữ liệu đổi. Effect không được dừng thì rò rỉ bộ nhớ và chạy những việc không ai cần.
+
+Vue giải quyết bằng **effect scope**, hình dung như một cái túi. Mỗi component có sẵn một túi. Mọi `computed`, `watch`, `watchEffect` tạo **đồng bộ** trong `setup` đều tự rơi vào túi đó, và khi component unmount, Vue dừng cả túi một lần. Đó là lý do bạn hiếm khi phải tự dọn watcher trong Vue, khác với React nơi mỗi `useEffect` phải tự trả về hàm cleanup.
+
+Có hai trường hợp bạn phải để ý:
+
+- **Effect tạo bất đồng bộ**, ví dụ trong `setTimeout` hay sau một promise, không nằm trong túi nào. Bạn phải giữ hàm `stop` mà `watch` trả về và tự gọi nó.
+- **Effect tạo bên ngoài component**, ví dụ trong một store hay composable dùng chung cho nhiều nơi. Lúc này bạn tự tạo túi bằng `effectScope()`. Pinia cũng dùng chính API này bên trong.
+
+<EffectScopeDemo />
+
+```ts
+import { effectScope, onScopeDispose, ref, watch, type Ref } from 'vue'
+
+export function useLivePrice(symbol: Ref<string>) {
+  const price = ref(0)
+  const socket = new WebSocket(PRICE_URL)
+  socket.onmessage = (e) => (price.value = JSON.parse(e.data).price)
+  watch(symbol, (s) => socket.send(`sub:${s}`))
+  onScopeDispose(() => socket.close()) // chạy khi túi chứa composable bị dừng
+  return price
+}
+
+// Bên ngoài component: tự tạo túi
+const scope = effectScope()
+const price = scope.run(() => useLivePrice(symbol))!
+// …khi không cần nữa
+scope.stop() // watch dừng, socket đóng
+```
+
+`onScopeDispose` là phiên bản tổng quát của `onUnmounted`. Gọi trong component thì nó chạy khi component unmount. Gọi trong `scope.run` thì nó chạy khi `scope.stop()`. Composable dùng `onScopeDispose` vì vậy chạy đúng ở cả hai nơi.
+
+<Callout type="warn" title="Bug: tạo watcher bất đồng bộ">
+  Watcher tạo lúc không có component nào đang setup sẽ không thuộc scope nào, nên vẫn chạy sau khi component đã unmount. Hãy tạo watcher đồng bộ trong `setup`, rồi dùng điều kiện bên trong callback. Nếu bắt buộc phải tạo muộn, giữ `const stop = watch(...)` và gọi `stop()` trong `onUnmounted`.
+</Callout>
+
+## Ôn tập [#on-tap]
+
+Lật thẻ nhớ trước, rồi làm quiz.
+
+<Flashcards id="tick-and-scope" />
+
+## Quiz cuối bài [#quiz]
+
+Bốn câu. Đặt mục tiêu ít nhất 3/4.
+
+<Quiz id="tick-and-scope" />
+
+## Bài tập 12 phút [#bai-tap]
+
+Mở [Vue SFC Playground](https://play.vuejs.org/) và viết `ChatMini.vue`:
+
+1. Nút "Gửi" push một tin vào `messages` rồi cuộn danh sách xuống dưới cùng. Viết một lần với `await nextTick()`, thấy cuộn đủ; bỏ `nextTick`, thấy thiếu tin cuối.
+2. Composable `useTicker(ms)` dùng `setInterval` và dọn bằng `onScopeDispose`. Gọi nó trong component, tắt panel bằng `v-if`, xác nhận interval dừng.
+
+Thắng lợi: đọc DOM đúng lúc, và không để ticker chạy sau khi panel đã unmount.
+
+## Bài tiếp theo [#bai-tiep-theo]
+
+[Bài 8, **Composables**](/blog/technical/web-development/vue-study/composables) tách logic có state ra khỏi component: một hàm `use…` nhận `MaybeRefOrGetter`, theo dõi bằng `toValue` và `watch`, rồi dọn bằng `onScopeDispose`.
+
+**Tài liệu gốc nên đọc kèm:**
+[Watchers: Callback Flush Timing](https://vuejs.org/guide/essentials/watchers.html#callback-flush-timing),
+[nextTick()](https://vuejs.org/api/general.html#nexttick),
+[Reactivity API: Advanced](https://vuejs.org/api/reactivity-advanced.html#effectscope).
