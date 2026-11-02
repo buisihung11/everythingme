@@ -1,0 +1,144 @@
+---
+title: 'Vue Study #8: Composables'
+description: Tách logic có state thành hàm use…. Nhận ref hoặc getter bằng toValue, theo dõi bằng watch, và dọn bằng onScopeDispose.
+date: 2026-11-02
+type: technical
+category: web-development
+readTime: 16
+thumbnail: /thumbnails/vue-study.svg
+---
+
+<SeriesNav current="composables" />
+
+Bài 7 cho bạn cái túi để dọn effect. Bài này bỏ logic có state ra khỏi component, thành một hàm. Sau bài này bạn viết được `useFetch` nhận string, ref hoặc getter, và không để request sống sau khi người gọi đã unmount.
+
+Cả bài xoay quanh một câu:
+
+> **Composable là một hàm tự giữ state. Mỗi lần gọi là một bản. Đọc đối số bên trong watch, dọn trong túi của người gọi.**
+
+Ba hình. Bấm vào một ô để nhảy tới phần tương ứng.
+
+<MemoryMap id="composables" />
+
+## 1. Mỗi lần gọi một bản: useToggle [#use-toggle]
+
+Custom hook của React và composable của Vue cùng một việc: kéo logic có state ra khỏi giao diện để gọi lại. Khác ở cách chạy. Hook chạy lại mỗi lần render, nên có luật thứ tự. `setup` chạy một lần, nên composable không có dependency array và không có stale closure: hàm bên trong luôn đọc `.value` mới nhất.
+
+Quy ước tên là `use` + camelCase. Return một object thường chứa ref, để người gọi destructure mà vẫn giữ liên kết:
+
+```ts
+export function useToggle(initial = false) {
+  const on = ref(initial)
+  function toggle() {
+    on.value = !on.value
+  }
+  return { on, toggle }
+}
+
+const { on, toggle } = useToggle()
+```
+
+Hai component cùng gọi `useToggle()` thì có hai ref. Đó là điểm giống `useState` bên trong một hook, và là điểm khác store ở Bài 10.
+
+<UseToggleLab />
+
+`const { value } = on` lấy boolean ra khỏi hộp, cùng bệnh "mang đồ ra khỏi cổng" của Bài 2 và Bài 6. `return reactive({ on: false })` rồi destructure cũng mất liên kết. Tài liệu Vue khuyên return ref trong object thường chính để destructure được an toàn.
+
+<Callout type="warn" title="Bug: bóc ref mà composable vừa trả">
+  `const { value } = useToggle()` không theo dõi nữa, vì `value` là boolean tại đúng dòng đó. Giữ ref: `const { on, toggle } = useToggle()`, rồi đọc `on.value` trong script và `on` trong template.
+</Callout>
+
+## 2. Đối số là ref hoặc getter [#to-value]
+
+`useToggle(false)` chỉ cần giá trị ban đầu. `useFetch` thì khác: URL có thể là string, là ref, hoặc là getter đọc `props.id` rồi trả về đường dẫn. Kiểu của việc đó là `MaybeRefOrGetter<string>`, có từ Vue 3.3.
+
+`toValue` chuẩn hóa cả ba. Ref thì mở `.value`. Hàm thì gọi và lấy kết quả. Còn lại thì trả nguyên. `unref` không gọi hàm, nên getter bị coi là giá trị.
+
+Gọi `toValue` một lần lúc setup là snapshot. Muốn fetch lại khi URL đổi thì gọi nó trong getter của `watch`, để lần đọc được ghi sổ. `watch` mặc định lười, nên lần fetch đầu cần `{ immediate: true }`.
+
+<ToValueProbe />
+
+```ts
+import { ref, watch, toValue, onScopeDispose } from 'vue'
+import type { MaybeRefOrGetter } from 'vue'
+
+export function useFetch(url: MaybeRefOrGetter<string>) {
+  const data = ref(null)
+  const error = ref<unknown>(null)
+  let controller: AbortController | null = null
+
+  function abort() {
+    controller?.abort()
+    controller = null
+  }
+
+  watch(
+    () => toValue(url),
+    (href) => {
+      abort()
+      controller = new AbortController()
+      const { signal } = controller
+      data.value = null
+      error.value = null
+      fetch(href, { signal })
+        .then((res) => res.json())
+        .then((json) => {
+          if (signal.aborted) return
+          data.value = json
+        })
+        .catch((err: { name?: string }) => {
+          if (err?.name === 'AbortError') return
+          error.value = err
+        })
+    },
+    { immediate: true },
+  )
+
+  onScopeDispose(abort)
+  return { data, error }
+}
+```
+
+`const { data, error } = useFetch(url)` giữ hai ref. Đừng lấy `data.value` ra một biến thường.
+
+## 3. Gọi trong setup, dọn bằng onScopeDispose [#call-site]
+
+Composable chỉ được gọi đồng bộ trong `script setup` hoặc `setup()`. Đó là lúc Vue có active instance, để gắn lifecycle và watcher vào túi của component. `script setup` là chỗ duy nhất được gọi composable sau `await`: compiler khôi phục instance giúp bạn.
+
+Gọi trong `@click` thì không còn instance. Watcher không vào túi nào, unmount không dừng nó. Gọi trong `if` mà lần setup đầu đi nhánh kia thì composable không chạy, và setup không chạy lại. Vue không crash như hook gọi sai thứ tự. Nó im lặng bỏ sót.
+
+`onScopeDispose` là cleanup của Bài 7, dùng được cả trong component lẫn trong `effectScope`. Request, socket, interval tạo trong composable thì dọn ở đó, không dọn bằng `onUnmounted` nếu bạn muốn hàm này chạy được ở cả hai nơi.
+
+<CallSiteGate />
+
+<Callout type="warn" title="Bug: gọi composable trong handler hoặc trong if">
+  `function open() { useFetch(url) }` không gắn được vào component. Đưa lời gọi lên top-level của setup. Điều kiện thì đặt bên trong `watch`, đừng bọc cả lời gọi composable.
+</Callout>
+
+## Ôn tập [#on-tap]
+
+Lật thẻ nhớ trước, rồi làm quiz.
+
+<Flashcards id="composables" />
+
+## Quiz cuối bài [#quiz]
+
+Năm câu. Đặt mục tiêu ít nhất 4/5.
+
+<Quiz id="composables" />
+
+## Bài tập 15 phút [#bai-tap]
+
+Mở [Vue SFC Playground](https://play.vuejs.org/) và viết một file `useFetch.ts` như đoạn ở mục 2. Trong `App.vue`, giữ `const id = ref(1)` và gọi `useFetch` với một getter trả về URL `posts` cộng `id`. Nút tăng `id` phải đổi bài viết. Tắt component bằng `v-if` trong lúc request chưa về, request cũ không được ghi vào màn hình nữa.
+
+Thắng lợi: một composable nhận getter, theo dõi bằng `watch`, và abort khi túi của người gọi dừng.
+
+## Bài tiếp theo [#bai-tiep-theo]
+
+[Bài 9, **Provide và inject**](/blog/technical/web-development/vue-study/provide-inject) chia một bản state xuống cây component khi prop drilling bắt đầu đau, mà chưa cần store.
+
+**Tài liệu gốc nên đọc kèm:**
+[Composables](https://vuejs.org/guide/reusability/composables.html),
+[toValue()](https://vuejs.org/api/reactivity-utilities.html#tovalue),
+[MaybeRefOrGetter](https://vuejs.org/api/utility-types.html#maybereforgetter),
+[onScopeDispose()](https://vuejs.org/api/reactivity-advanced.html#onscopedispose).

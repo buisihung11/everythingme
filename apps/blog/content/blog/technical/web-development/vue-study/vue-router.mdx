@@ -1,0 +1,106 @@
+---
+title: 'Vue Study #12: Vue Router'
+description: Params, lazy route và beforeEnter. Guard thấy route, chưa thấy state của component.
+date: 2026-11-02
+type: technical
+category: web-development
+readTime: 15
+thumbnail: /thumbnails/vue-study.svg
+---
+
+<SeriesNav current="vue-router" />
+
+Bài 11 fetch theo một `id` trong script. Bài này để `id` trên URL. Sau bài này bạn giải thích được vì sao `/users/1` sang `/users/2` không tạo lại component, và vì sao `beforeEnter` redirect được khách mà không đọc ref bên trong trang.
+
+Cả bài xoay quanh một câu:
+
+> **Router giữ instance khi chỉ params đổi. Guard chạy trước khi component tồn tại, nên nó nhìn route, không nhìn state của trang.**
+
+Hai hình.
+
+<MemoryMap id="vue-router" />
+
+## 1. Params, lazy, và watch [#params]
+
+So với React Router: `path: '/users/:id'` là dynamic segment, `useRoute().params.id` là `useParams()`. Khác một chỗ hay gây bug: từ `/users/1` sang `/users/2`, Vue Router tái sử dụng cùng component. `onMounted` không chạy lại. `beforeEnter` của route đó cũng không chạy lại, vì bạn không vào một route record mới. Bạn chỉ đổi params.
+
+Theo id bằng getter, cùng hình Bài 6 đã dùng cho `props.id`:
+
+```ts
+const route = useRoute()
+
+watch(
+  () => route.params.id,
+  (id) => load(id),
+  { immediate: true },
+)
+```
+
+`watch(route.params.id, load)` nhận một string. Không có nguồn reactive nào để theo, nên callback không chạy khi URL đổi. `onBeforeRouteUpdate` là cửa thứ hai, và nó hủy navigation được nếu bạn `return false`.
+
+Đừng gán `route.params.id = '9'`. Route location không phải chỗ ghi. `router.push({ name: 'user', params: { id: '9' } })` mới đổi URL.
+
+Lazy route là một hàm trả về `import()`:
+
+```ts
+{
+  path: '/orders',
+  component: () => import('./pages/orders/ui/OrdersPage.vue'),
+}
+```
+
+Chunk chỉ được kéo khi route này thực sự được vào. Guard ở mục sau chạy trước bước đó.
+
+<ParamWatchTrap />
+
+## 2. beforeEnter [#before-enter]
+
+`beforeEnter` nằm trên cấu hình route, không nằm trong component. Nó nhận `to` và `from`. Return `false` thì hủy. Return một location thì redirect, giống `router.push`. Không return gì thì cho qua.
+
+Thứ tự trong một lần điều hướng: guard này chạy trước khi async component được resolve, và trước khi instance mới được tạo. Vì vậy nó không thấy ref, không thấy DOM, không thấy props của `OrdersPage`. Trạng thái "đã đăng nhập" phải ở store hoặc ở một module mà guard đọc được.
+
+```ts
+function requireAuth(to) {
+  const auth = useAuthStore()
+  if (!auth.isAuthenticated && to.name !== 'login') {
+    return { name: 'login' }
+  }
+}
+```
+
+Khách vào `/orders`: guard return login, `import()` của Orders không chạy. Người đã đăng nhập: guard cho qua, rồi chunk mới tải. So với React Router, đây là `loader` hoặc một wrapper route, nhưng thời điểm thì sớm hơn render: component chưa có để bạn đọc state của nó.
+
+Đừng nhét kiểm tra id vào `beforeEnter` của `/users/:id`. Params đổi thì guard đó không chạy. Việc đó thuộc `watch` hoặc `onBeforeRouteUpdate`.
+
+<AuthGuardFlow />
+
+<Callout type="warn" title="Bug: watch params không có getter, hoặc ghi vào params">
+  `watch(route.params.id, …)` đứng yên vì đối số là string. Viết `watch(() => route.params.id, …)`. `route.params.id = next` không đổi URL. Điều hướng bằng `router.push`.
+</Callout>
+
+## Ôn tập [#on-tap]
+
+Lật thẻ nhớ trước, rồi làm quiz.
+
+<Flashcards id="vue-router" />
+
+## Quiz cuối bài [#quiz]
+
+Năm câu. Đặt mục tiêu ít nhất 4/5.
+
+<Quiz id="vue-router" />
+
+## Bài tập 15 phút [#bai-tap]
+
+Mở [Vue SFC Playground](https://play.vuejs.org/) với Vue Router và viết một mảng `routes`: `/login` tải ngay, `/orders` lazy bằng `() => import(...)`, `beforeEnter` đọc một ref `authed` khai báo cùng module với router (hoặc một auth store) và redirect về login khi ref đó đang false. Thêm `/users/:id` và một watcher dùng getter để đổi tiêu đề khi id đổi. Xác nhận một việc: gán `route.params.id` không đổi những gì đang hiện, `router.push` thì có.
+
+Thắng lợi: một guard nhìn route và auth, cộng một watcher nhìn params qua getter.
+
+## Bài tiếp theo [#bai-tiep-theo]
+
+[Bài 13, **Kiến trúc thư mục**](/blog/technical/web-development/vue-study/project-architecture) đặt route, store và nút "thêm vào giỏ" vào đúng tầng, và chỉ cho import đi xuống.
+
+**Tài liệu gốc nên đọc kèm:**
+[Dynamic Route Matching](https://router.vuejs.org/guide/essentials/dynamic-matching.html),
+[Navigation Guards](https://router.vuejs.org/guide/advanced/navigation-guards.html),
+[Lazy Loading Routes](https://router.vuejs.org/guide/advanced/lazy-loading.html).

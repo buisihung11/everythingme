@@ -1,0 +1,94 @@
+---
+title: 'Vue Study #3: Template và vòng đời'
+description: Bốn ký hiệu template, v-if và v-show, rồi cặp onMounted / onUnmounted, để đọc được mặt của một SFC.
+date: 2026-11-02
+type: technical
+category: web-development
+readTime: 12
+thumbnail: /thumbnails/vue-study.svg
+---
+
+<SeriesNav current="template-and-lifecycle" />
+
+Bài 2 đặt dữ liệu vào hộp. Bài này gắn hộp lên mặt. Sau bài này, bạn sẽ đọc được một template Vue bất kỳ, chọn đúng `v-if` hay `v-show`, và biết chỗ mở / chỗ dọn của một side effect.
+
+Cả bài xoay quanh một câu:
+
+> **Template là JavaScript cộng bốn phím tắt. Component sinh ra, lên sóng, rồi xuống sóng.**
+
+Ba hình. Bấm vào một ô để nhảy tới phần tương ứng.
+
+<MemoryMap id="template-and-lifecycle" />
+
+## 1. Template: JavaScript cộng vài phím tắt [#template]
+
+Template của Vue trông như HTML, nhưng mỗi chỗ động thực ra là một biểu thức JavaScript. Bạn chỉ cần thuộc bốn ký hiệu:
+
+- `{{ }}` là ô cửa sổ, in ra text.
+- `:` là sợi dây nối dữ liệu vào attribute.
+- `@` là tai nghe sự kiện.
+- `v-model` là `:` và `@` gộp lại.
+
+<DirectiveDecoder />
+
+<Callout type="warn" title="Bug kinh điển: quên dấu hai chấm">
+  `<Pagination total="100" />` truyền **string** `"100"`. Nếu props khai báo kiểu `number`, Vue sẽ cảnh báo, còn so sánh `total > 50` sẽ cho kết quả sai một cách âm thầm. Có dấu `:` thì giá trị được hiểu là JavaScript: `:total="100"`.
+</Callout>
+
+`v-if` và `v-show` đều ẩn và hiện phần tử, nhưng theo hai cách rất khác nhau:
+
+<IfVsShow />
+
+## 2. Vòng đời: sinh ra, lên sóng, xuống sóng [#vong-doi]
+
+Vòng đời của một component có bốn giai đoạn, và mỗi giai đoạn có một cặp hook "trước" và "sau":
+
+<LifecycleTimeline />
+
+```ts
+import { onMounted, onUnmounted } from 'vue'
+
+let timer: number | undefined
+
+onMounted(() => {
+  timer = window.setInterval(poll, 5000)
+})
+
+onUnmounted(() => {
+  window.clearInterval(timer)
+})
+```
+
+So với React: trong Vue, phần mở và phần dọn dẹp nằm ở hai hook riêng, thay vì một `useEffect` trả về hàm cleanup. Hai hook này chỉ chạy một lần mỗi component, nên không có cảnh effect chạy lại vì dependency thay đổi.
+
+Cách Vue gom nhiều watcher rồi dừng một lần khi unmount, cùng việc đọc DOM ngay sau khi state đổi, là [Bài 7](/blog/technical/web-development/vue-study/tick-and-scope).
+
+## Ôn tập [#on-tap]
+
+Lật thẻ nhớ trước, rồi làm quiz.
+
+<Flashcards id="template-and-lifecycle" />
+
+## Quiz cuối bài [#quiz]
+
+Năm câu. Đặt mục tiêu ít nhất 4/5 trước khi sang Bài 4.
+
+<Quiz id="template-and-lifecycle" />
+
+## Bài tập 12 phút [#bai-tap]
+
+Mở [Vue SFC Playground](https://play.vuejs.org/) và viết `TickerPanel.vue`:
+
+1. Một `ref` `open` gắn vào nút bật/tắt.
+2. Bên trong panel, `onMounted` chạy `setInterval` tăng một `count` mỗi giây, `onUnmounted` gọi `clearInterval`.
+3. Viết **hai phiên bản**: `v-if="open"` và `v-show="open"`. Với `v-if`, tắt panel rồi bật lại thì `count` về 0. Với `v-show`, `count` chạy ngầm và không mất.
+
+Thắng lợi: nhìn thấy `v-if` đập instance, `v-show` chỉ kéo rèm, và side effect được dọn đúng chỗ.
+
+## Bài tiếp theo [#bai-tiep-theo]
+
+[Bài 4, **Hợp đồng: props, emits, v-model**](/blog/technical/web-development/vue-study/component-contracts) chuyển từ một file sang ranh giới giữa các file: viết component cho người khác dùng.
+
+**Tài liệu gốc nên đọc kèm:**
+[Template Syntax](https://vuejs.org/guide/essentials/template-syntax.html),
+[Lifecycle Hooks](https://vuejs.org/guide/essentials/lifecycle.html).

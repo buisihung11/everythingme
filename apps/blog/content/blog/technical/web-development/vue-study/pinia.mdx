@@ -1,0 +1,105 @@
+---
+title: 'Vue Study #10: Pinia'
+description: Khi nào store thắng composable. Setup store cho một giỏ hàng, và vì sao destructure store cần storeToRefs.
+date: 2026-11-02
+type: technical
+category: web-development
+readTime: 15
+thumbnail: /thumbnails/vue-study.svg
+---
+
+<SeriesNav current="pinia" />
+
+Bài 8 mỗi lần gọi một bản. Bài 9 một bản theo cây. Bài này là một bản cho cả app: header và trang checkout cùng nhìn một giỏ. Sau bài này bạn viết được setup store nhỏ, và không destructure state của store bằng tay.
+
+Cả bài xoay quanh một câu:
+
+> **Pinia là singleton. Gọi useCartStore() ở đâu cũng ra cùng một store. State của nó là reactive, đừng bóc ra.**
+
+Ba hình.
+
+<MemoryMap id="pinia" />
+
+## 1. Khi nào dùng store [#when-store]
+
+So với React: composable giống custom hook có `useState` bên trong, mỗi nơi một state. `provide`/`inject` giống context, sống theo cây. Pinia giống Zustand: hàm `useCartStore()` trông như hook, nhưng mọi lần gọi trả về cùng store.
+
+Chọn store khi hai component không có cha chung tiện, mà phải cùng một dữ liệu người dùng đang sửa: giỏ, session đã đăng nhập, bộ lọc dùng ở nhiều layout. Modal của một trang, toggle của một panel, theme của một form thì chưa đáng.
+
+Store cũng là composable theo luật gọi: gọi `useCartStore()` trong setup, không gọi trong click. Pinia gắn store vào app đã `app.use(pinia)`.
+
+<StoreOrComposable />
+
+## 2. Setup store cho giỏ hàng [#cart-store]
+
+`defineStore` nhận id, rồi một hàm setup hoặc một object option. Với người đang học Composition API, setup store đọc giống component:
+
+```ts
+export const useCartStore = defineStore('cart', () => {
+  const items = ref<Line[]>([])
+  const count = computed(() =>
+    items.value.reduce((sum, line) => sum + line.qty, 0),
+  )
+  function add(line: Line) {
+    const found = items.value.find((item) => item.id === line.id)
+    if (found) found.qty += 1
+    else items.value.push({ ...line })
+  }
+  return { items, count, add }
+})
+```
+
+`ref` thành state, `computed` thành getter, function thành action. Pinia yêu cầu return mọi state. Ref tạo trong store mà không return thì không được coi là state: devtools, plugin và SSR không thấy nó.
+
+Trong component, `store.count` và `store.add()` dùng được ngay. Store là `reactive`, nên template đọc `store.count` không cần `.value`. Đừng destructure. Mục sau là đúng cái bẫy đó.
+
+<CartStoreDemo />
+
+Getter là chỗ của `total`. Đừng giữ một ref tổng rồi tự cộng trong từng action. Action là chỗ sửa state. Đừng fetch danh sách server vào store này. Bài 11 nói vì sao.
+
+## 3. storeToRefs [#store-to-refs]
+
+`const { count } = store` lấy số ra khỏi Proxy, cùng bệnh với `reactive` ở Bài 2. Template đọc biến đó thì đứng yên, dù `store.increment()` đã chạy.
+
+`storeToRefs(store)` trả ref cho state và getter, bỏ qua action. Action destructure thẳng từ store vẫn ổn, vì Pinia đã bind `this`:
+
+```ts
+const store = useCartStore()
+const { count } = storeToRefs(store)
+const { add } = store
+```
+
+Giữ `store.count` trong template cũng đủ nếu bạn không cần tách từng field ra. `storeToRefs` đáng khi đưa state vào một composable khác, hoặc khi template của bạn muốn vài biến ngắn.
+
+<StoreToRefsTrap />
+
+<Callout type="warn" title="Bug: destructure store không qua storeToRefs">
+  `const { items, count } = useCartStore()` chụp giá trị tại dòng đó. Giỏ thêm món, hai biến không đổi. Dùng `store.items`, hoặc `const { items, count } = storeToRefs(store)`.
+</Callout>
+
+## Ôn tập [#on-tap]
+
+Lật thẻ nhớ trước, rồi làm quiz.
+
+<Flashcards id="pinia" />
+
+## Quiz cuối bài [#quiz]
+
+Năm câu. Đặt mục tiêu ít nhất 4/5.
+
+<Quiz id="pinia" />
+
+## Bài tập 15 phút [#bai-tap]
+
+Mở [Vue SFC Playground](https://play.vuejs.org/), thêm Pinia, và viết `useCartStore`: `items`, getter `count`, action `add`. Hai component `HeaderBadge` và `CartPage` cùng gọi store. Thêm món ở trang cart thì badge đổi. Trong `CartPage`, thử `const { count } = store` một lần để thấy số đứng yên, rồi đổi sang `storeToRefs`.
+
+Thắng lợi: một store dùng chung, và state không bị bóc khỏi reactive.
+
+## Bài tiếp theo [#bai-tiep-theo]
+
+[Bài 11, **Dữ liệu từ server**](/blog/technical/web-development/vue-study/server-state) tách cache của request ra khỏi store. Giỏ thì ở Pinia. User theo id thì không.
+
+**Tài liệu gốc nên đọc kèm:**
+[Defining a Store](https://pinia.vuejs.org/core-concepts/),
+[Setup Stores](https://pinia.vuejs.org/core-concepts/#setup-stores),
+[Destructuring from a Store](https://pinia.vuejs.org/core-concepts/#destructuring-from-a-store).

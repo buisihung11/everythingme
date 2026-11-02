@@ -1,0 +1,121 @@
+---
+title: 'Vue Study #11: Dữ liệu từ server'
+description: Client state và cache của request là hai việc. useUser(id) giữ loading, error, data và abort request cũ.
+date: 2026-11-02
+type: technical
+category: web-development
+readTime: 14
+thumbnail: /thumbnails/vue-study.svg
+---
+
+<SeriesNav current="server-state" />
+
+Bài 10 giữ giỏ hàng: dữ liệu người dùng đang sửa, trên máy họ. Bài này là dữ liệu của server. Sau bài này bạn viết được `useUser(id)` có ba ô loading, error, data, và request cũ bị abort khi id đổi. Bài không thêm dependency nào.
+
+Cả bài xoay quanh một câu:
+
+> **Giỏ là client state. Hồ sơ vừa fetch là cache của một request. Hai thứ không ở cùng một nhà.**
+
+Hai hình.
+
+<MemoryMap id="server-state" />
+
+## 1. useUser(id) và abort [#use-user]
+
+Bài 2 đã có `watch` cộng `AbortController`. Bài 8 đã có hình dạng composable. Ghép lại:
+
+```ts
+export function useUser(id: MaybeRefOrGetter<string>) {
+  const data = ref<User | null>(null)
+  const error = ref<unknown>(null)
+  const loading = ref(false)
+  let controller: AbortController | null = null
+
+  watch(
+    () => toValue(id),
+    (userId, _prev, onCleanup) => {
+      controller?.abort()
+      controller = new AbortController()
+      const { signal } = controller
+      loading.value = true
+      error.value = null
+      onCleanup(() => controller?.abort())
+
+      fetch(`/api/users/${userId}`, { signal })
+        .then((res) => {
+          if (!res.ok) throw new Error(String(res.status))
+          return res.json()
+        })
+        .then((user) => {
+          if (signal.aborted) return
+          data.value = user
+        })
+        .catch((err: { name?: string }) => {
+          if (err?.name === 'AbortError') return
+          error.value = err
+          data.value = null
+        })
+        .finally(() => {
+          if (!signal.aborted) loading.value = false
+        })
+    },
+    { immediate: true },
+  )
+
+  onScopeDispose(() => controller?.abort())
+  return { data, error, loading }
+}
+```
+
+`onCleanup` chạy khi id đổi và khi watcher dừng. Response chậm của id cũ không được ghi đè id mới. `loading` chỉ tắt cho request còn sống, kẻo request bị hủy làm màn hình tưởng là đã xong.
+
+Ba ô nằm cạnh nhau trong composable. Component chỉ việc đọc:
+
+```vue
+<p v-if="loading">Đang tải…</p>
+<p v-else-if="error">Không tải được</p>
+<p v-else>{{ data?.name }}</p>
+```
+
+<UseUserFetch />
+
+Bấm Bảo (chậm) rồi An (nhanh). Bản có abort giữ An. Bật "quên abort" thì Bảo về sau và ghi đè. Đó là bug bạn sẽ thấy trên màn hình profile nếu thiếu `onCleanup`.
+
+## 2. Pinia không giữ cache [#wrong-home]
+
+Giỏ hàng là sự thật trên máy người dùng, cho tới khi họ bấm thanh toán. List user vừa fetch là sự thật của server tại một thời điểm. Cất list đó vào Pinia thì bạn phải tự biết lúc nào nó cũ, và `loading` để trong store dễ bị màn khác ghi đè.
+
+`useUser(id)` đủ khi một màn hình sở hữu một request. Nhiều màn cùng một user, cần gộp request trùng, retry, và invalidate sau một mutation, thì đó là việc của một query library. Bài tổng quan nhắc TanStack Query cho đúng lúc đó. Bài này cố ý không cài gì thêm: hình dạng `ref` + `watch` phải rõ trước khi một thư viện giấu nó đi.
+
+<StateHomePicker />
+
+<Callout type="warn" title="Bug: list từ server nằm trong Pinia, không có invalidate">
+  Store không biết response đã cũ. Hai component fetch hai id vào cùng `users` và cùng `loading` thì cái về sau thắng, kể cả khi nó là request cũ. Để loading, error, data trong `useUser(id)`, và abort trong `onCleanup`.
+</Callout>
+
+## Ôn tập [#on-tap]
+
+Lật thẻ nhớ trước, rồi làm quiz.
+
+<Flashcards id="server-state" />
+
+## Quiz cuối bài [#quiz]
+
+Năm câu. Đặt mục tiêu ít nhất 4/5.
+
+<Quiz id="server-state" />
+
+## Bài tập 15 phút [#bai-tap]
+
+Mở [Vue SFC Playground](https://play.vuejs.org/) và viết `useUser(id)` như mục 1, trỏ vào `https://jsonplaceholder.typicode.com/users/${id}`. Một nút đổi id từ 1 sang 2 sang 3. Đổi nhanh: tên trên màn hình phải là id cuối, không nháy lại tên của request chậm. `loading` bật trong lúc chờ và tắt khi có data hoặc lỗi.
+
+Thắng lợi: một composable cho server cache, không một field nào của nó nằm trong store giỏ hàng.
+
+## Bài tiếp theo [#bai-tiep-theo]
+
+[Bài 12, **Vue Router**](/blog/technical/web-development/vue-study/vue-router) đưa `id` lên URL. Guard đăng nhập nhìn route, không nhìn state bên trong trang.
+
+**Tài liệu gốc nên đọc kèm:**
+[Watchers](https://vuejs.org/guide/essentials/watchers.html),
+[Composables: async state](https://vuejs.org/guide/reusability/composables.html#async-state-example),
+[State Management](https://vuejs.org/guide/scaling-up/state-management.html).

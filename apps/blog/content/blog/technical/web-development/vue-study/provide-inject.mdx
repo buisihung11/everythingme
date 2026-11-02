@@ -1,0 +1,98 @@
+---
+title: 'Vue Study #9: Provide và inject'
+description: Chia sẻ theme xuống cây component bằng InjectionKey và readonly, không khoan props qua từng tầng.
+date: 2026-11-02
+type: technical
+category: web-development
+readTime: 14
+thumbnail: /thumbnails/vue-study.svg
+---
+
+<SeriesNav current="provide-inject" />
+
+Bài 8 tạo state riêng cho mỗi lần gọi. Bài này cho một bản state đi xuống cả một nhánh cây, khi tầng giữa không cần biết tới nó. Sau bài này bạn provide được một theme có `InjectionKey`, consumer chỉ đọc, và bạn biết vì sao mutate một object thường không làm cháu cập nhật.
+
+Cả bài xoay quanh một câu:
+
+> **provide để một giá trị ở tổ tiên. inject lấy lại ở bất kỳ độ sâu nào. Muốn UI đi theo thì giá trị đó phải là ref.**
+
+Hai hình.
+
+<MemoryMap id="provide-inject" />
+
+## 1. Theme đi xuống cây [#theme-tree]
+
+Prop drilling là chuyện bạn đã gặp với React: `theme` đi qua Layout chỉ để Button ở dưới cùng đọc. Vue gọi cặp thay thế là `provide` và `inject`, cùng vai với context.
+
+```ts
+// App.vue
+const theme = ref<'light' | 'dark'>('light')
+provide(themeKey, readonly(theme))
+
+// Button.vue
+const theme = inject(themeKey)
+```
+
+Layout ở giữa không khai báo prop `theme`. Button phải nằm trong cây con của người provide. Không có người provide thì `inject` trả `undefined` và cảnh báo, trừ khi bạn đưa giá trị mặc định: `inject(themeKey, readonly(ref('light')))`.
+
+Ref được provide sẽ được inject nguyên, không tự unwrap. Template của Button vẫn tự mở `.value`. Trong script thì đọc `theme.value`.
+
+Cùng một key, cha gần nhất thắng. String `'theme'` dễ đụng thư viện khác. Bài sau của hình này dùng Symbol để tránh việc đó.
+
+<ThemeProvideTree />
+
+## 2. InjectionKey, readonly, object thường [#injection-key]
+
+`InjectionKey<T>` là một `Symbol` có kèm kiểu. Provider và consumer import cùng một key từ một file, TypeScript biết hai bên đang nói về cùng một giá trị:
+
+```ts
+import type { InjectionKey, Ref } from 'vue'
+
+export const themeKey: InjectionKey<Readonly<Ref<'light' | 'dark'>>> =
+  Symbol('theme')
+```
+
+String key thì `inject` ra `unknown`, bạn phải tự khai báo generic. Symbol thì kiểu đi theo key.
+
+Giữ chỗ ghi ở provider. `readonly(theme)` để Button đọc và vẫn cập nhật khi App đổi, nhưng gán `.value` từ Button bị chặn ở dev. Muốn Button đổi theme thì provide thêm một hàm `setTheme`, đừng đưa ref trần cho cả cây ghi.
+
+Object thường là bẫy còn lại. `provide('theme', { mode: 'light' })` rồi `theme.mode = 'dark'` không trigger ai. Button không render lại. Provide ref, hoặc `reactive`, thì mới có liên kết.
+
+<InjectContract />
+
+`provide` và `inject` gọi đồng bộ trong setup, cùng luật với composable ở Bài 8. Handler `@click` không còn active instance.
+
+<Callout type="warn" title="Bug: inject ngoài setup, hoặc provide object thường">
+  `inject()` trong click thì Vue cảnh báo và bạn không lấy được giá trị theo instance hiện tại. Provide một object thường rồi mutate sau đó: con giữ đúng object, nhưng không ai bảo con render lại. Hãy provide ref, và bọc `readonly` nếu consumer không được ghi.
+</Callout>
+
+## Ôn tập [#on-tap]
+
+Lật thẻ nhớ trước, rồi làm quiz.
+
+<Flashcards id="provide-inject" />
+
+## Quiz cuối bài [#quiz]
+
+Năm câu. Đặt mục tiêu ít nhất 4/5.
+
+<Quiz id="provide-inject" />
+
+## Bài tập 12 phút [#bai-tap]
+
+Mở [Vue SFC Playground](https://play.vuejs.org/) và viết ba file cho một theme:
+
+1. `theme.ts` export `themeKey` kiểu `InjectionKey<Readonly<Ref<'light' | 'dark'>>>`.
+2. `App.vue` giữ ref, provide `readonly(theme)`, có nút đổi sáng tối.
+3. `Button.vue` inject và tô nền theo theme. Bọc Button trong một `Layout.vue` không hề khai báo prop theme.
+
+Thắng lợi: Button đổi màu khi App đổi theme, Layout không biết theme là gì, và Button không gán được vào ref.
+
+## Bài tiếp theo [#bai-tiep-theo]
+
+[Bài 10, **Pinia**](/blog/technical/web-development/vue-study/pinia) dùng khi hai nhánh cây không có cha chung tiện để provide, mà vẫn cần cùng một giỏ.
+
+**Tài liệu gốc nên đọc kèm:**
+[Provide / Inject](https://vuejs.org/guide/components/provide-inject.html),
+[Typing Provide / Inject](https://vuejs.org/guide/typescript/composition-api.html#typing-provide-inject),
+[readonly()](https://vuejs.org/api/reactivity-core.html#readonly).

@@ -1,0 +1,22 @@
+{
+  "title": "Vue Study",
+  "description": "Học Vue 3 cho React developer, mỗi bài một bộ hình ảnh để nhớ lâu.",
+  "defaultOpen": true,
+  "pages": [
+    "vue-fundamentals",
+    "reactive-state",
+    "template-and-lifecycle",
+    "component-contracts",
+    "slots-and-attrs",
+    "reactivity-deep-dive",
+    "tick-and-scope",
+    "composables",
+    "provide-inject",
+    "pinia",
+    "server-state",
+    "vue-router",
+    "project-architecture",
+    "testing",
+    "performance"
+  ]
+}
