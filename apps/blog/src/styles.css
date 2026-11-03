@@ -5,6 +5,7 @@
 @import "fumadocs-ui/css/neutral.css";
 @import "fumadocs-ui/css/preset.css";
 @import "react-unsplash/styles";
+@import "./components/notes/notes.css";
 @plugin "@tailwindcss/typography";
 @source "../../../libs/foundation/ui/src";
 

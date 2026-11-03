@@ -1,10 +1,13 @@
 import { Link, useRouterState } from '@tanstack/react-router'
 import ThemeToggle from './ThemeToggle'
+import { BookOpen } from 'lucide-react'
+import { useReadingNotes } from './notes/ReadingNotesContext'
 import BlogSiteSwitch from './BlogSiteSwitch'
 import PersonalCategoryNav from './PersonalCategoryNav'
 import { BLOG_SITES, getBlogTypeFromPathname } from '#/lib/blog'
 
 export default function Header() {
+  const { openNotebook } = useReadingNotes()
   const pathname = useRouterState({ select: (state) => state.location.pathname })
   const site = getBlogTypeFromPathname(pathname)
   const siteConfig = BLOG_SITES[site]
@@ -55,6 +58,15 @@ export default function Header() {
         )}
 
         <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
+          <button
+            type="button"
+            className="notes-header-button"
+            onClick={() => openNotebook()}
+            aria-label="Open my notes"
+          >
+            <BookOpen size={17} aria-hidden="true" />
+            <span>My notes</span>
+          </button>
           <BlogSiteSwitch />
           <ThemeToggle />
         </div>

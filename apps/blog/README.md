@@ -191,3 +191,24 @@ Files prefixed with `demo` can be safely deleted. They are there to provide a st
 You can learn more about all of the offerings from TanStack in the [TanStack documentation](https://tanstack.com).
 
 For TanStack Start specific documentation, visit [TanStack Start](https://tanstack.com/start).
+
+## Reader notes and highlights
+
+Both personal and technical articles support selecting text and choosing **Highlight**
+or **Add note**. Readers can also add a note about the whole article. **My notes** in
+the header opens the notebook across all articles; the article toolbar opens it
+filtered to the current article. The notebook supports search, editing, confirmed
+deletion, and links back to saved passages.
+
+Notes are stored locally under `everything-blog:reading-notes:v1`. They survive
+reloads in the same browser and update across tabs, but are not account-backed or
+synced across devices. Clearing site data removes them. Storage failures keep the
+draft open and show an error; invalid stored data is not overwritten.
+
+Highlights use the CSS Custom Highlight API without modifying MDX DOM nodes.
+Text offsets, the selected quote, and surrounding context restore passages after
+reloads and minor article edits. Ambiguous or removed passages are not highlighted;
+the original quote and note remain in the notebook. Browsers without this API can
+still save and review notes and use native text selection when returning to a passage.
+
+Run `pnpm --filter blog test` for storage, text-anchor, and notebook interaction tests.

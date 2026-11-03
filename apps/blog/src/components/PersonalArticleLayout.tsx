@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { Suspense } from 'react'
+import { ArticleNotes } from './notes/ArticleNotes'
 import { useMDXComponents } from '@/components/mdx'
 import {
   BlogPostTransitionProvider,
@@ -88,9 +89,11 @@ const personalClientLoader = browserCollections.docs.createClientLoader({
           ) : null}
         </header>
 
-        <div className="personal-article-body prose prose-neutral max-w-none dark:prose-invert">
-          <MDX components={useMDXComponents()} />
-        </div>
+        <ArticleNotes key={postUrl} postUrl={postUrl!} postTitle={frontmatter.title}>
+          <div className="personal-article-body prose prose-neutral max-w-none dark:prose-invert">
+            <MDX components={useMDXComponents()} />
+          </div>
+        </ArticleNotes>
       </article>
     )
   },
