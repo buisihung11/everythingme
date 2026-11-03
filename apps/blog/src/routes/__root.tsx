@@ -5,6 +5,7 @@ import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 import { RootProvider } from 'fumadocs-ui/provider/tanstack'
 import Footer from '../components/Footer'
+import { ReadingNotesProvider } from '../components/notes/ReadingNotesProvider'
 import Header from '../components/Header'
 import { BlogSiteProvider } from '../components/BlogSiteContext'
 
@@ -51,9 +52,11 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       <body className="font-sans antialiased [overflow-wrap:anywhere] selection:bg-[rgba(79,184,178,0.24)]">
         <RootProvider>
           <BlogSiteProvider>
-            <Header />
-            {children}
-            <Footer />
+            <ReadingNotesProvider>
+              <Header />
+              {children}
+              <Footer />
+            </ReadingNotesProvider>
           </BlogSiteProvider>
         </RootProvider>
         <TanStackDevtools

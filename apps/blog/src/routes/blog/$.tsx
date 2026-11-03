@@ -12,6 +12,7 @@ import {
 import { baseOptions } from '@/lib/layout.shared'
 import { useFumadocsLoader } from 'fumadocs-core/source/client'
 import { Suspense } from 'react'
+import { ArticleNotes } from '@/components/notes/ArticleNotes'
 import { useMDXComponents } from '@/components/mdx'
 import PersonalArticleLayout, {
   personalClientLoader,
@@ -88,9 +89,11 @@ const technicalClientLoader = browserCollections.docs.createClientLoader({
           {frontmatter.title}
         </DocsTitle>
         <DocsDescription>{frontmatter.description}</DocsDescription>
-        <DocsBody>
-          <MDX components={useMDXComponents()} />
-        </DocsBody>
+        <ArticleNotes key={postUrl} postUrl={postUrl!} postTitle={frontmatter.title}>
+          <DocsBody>
+            <MDX components={useMDXComponents()} />
+          </DocsBody>
+        </ArticleNotes>
       </DocsPage>
     )
   },
