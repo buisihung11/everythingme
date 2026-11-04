@@ -213,6 +213,41 @@ describe('next({ input }) input forwarding', () => {
     await action({ value: 42 });
     expect((handlerInput as { value: number }).value).toBe(42);
   });
+
+  it('forwards null when next({ input: null }) — does not fall back to the raw input', async () => {
+    let handlerInput: unknown = 'sentinel';
+
+    const clear = createMiddleware(({ next }) => next({ input: null }));
+    const pipeline = composePipeline(
+      [clear],
+      async ({ input }) => {
+        handlerInput = input;
+        return input;
+      },
+      {},
+    );
+
+    const result = await pipeline('original', {});
+    expect(handlerInput).toBeNull();
+    expect(result).toBeNull();
+  });
+
+  it('forwards undefined when next({ input: undefined }) — does not fall back to the raw input', async () => {
+    let handlerInput: unknown = 'sentinel';
+
+    const clear = createMiddleware(({ next }) => next({ input: undefined }));
+    const pipeline = composePipeline(
+      [clear],
+      async ({ input }) => {
+        handlerInput = input;
+        return input;
+      },
+      {},
+    );
+
+    await pipeline('original', {});
+    expect(handlerInput).toBeUndefined();
+  });
 });
 
 // ---------------------------------------------------------------------------
