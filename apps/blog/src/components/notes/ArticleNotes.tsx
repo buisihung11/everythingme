@@ -37,6 +37,7 @@ interface HoveredHighlight {
   left: number;
   top: number;
   placement: "above" | "below";
+  input: "hover" | "touch";
 }
 
 function ColorChoices({
@@ -378,6 +379,21 @@ export function ArticleNotes({
       dismissTimer = setTimeout(() => setHoveredHighlight(null), 160);
     }
 
+    function highlightAt(clientX: number, clientY: number) {
+      for (const { note, range } of highlightedRanges) {
+        if (typeof range.getClientRects !== "function") continue;
+        const rect = Array.from(range.getClientRects()).find(
+          (item) =>
+            clientX >= item.left - 2 &&
+            clientX <= item.right + 2 &&
+            clientY >= item.top - 2 &&
+            clientY <= item.bottom + 2,
+        );
+        if (rect) return { note, rect };
+      }
+      return null;
+    }
+
     function onPointerMove(event: PointerEvent) {
       if (event.pointerType === "touch") return;
       const target = event.target instanceof Element ? event.target : null;
@@ -391,17 +407,9 @@ export function ArticleNotes({
         return;
       }
 
-      for (const { note, range } of highlightedRanges) {
-        if (typeof range.getClientRects !== "function") continue;
-        const rect = Array.from(range.getClientRects()).find(
-          (item) =>
-            event.clientX >= item.left - 2 &&
-            event.clientX <= item.right + 2 &&
-            event.clientY >= item.top - 2 &&
-            event.clientY <= item.bottom + 2,
-        );
-        if (!rect) continue;
-
+      const highlighted = highlightAt(event.clientX, event.clientY);
+      if (highlighted) {
+        const { note, rect } = highlighted;
         cancelDismiss();
         const left = Math.min(Math.max(rect.right, 88), window.innerWidth - 8);
         const placement = rect.top >= 52 ? "above" : "below";
@@ -410,9 +418,10 @@ export function ArticleNotes({
           current?.noteId === note.id &&
           current.left === left &&
           current.top === top &&
-          current.placement === placement
+          current.placement === placement &&
+          current.input === "hover"
             ? current
-            : { noteId: note.id, left, top, placement },
+            : { noteId: note.id, left, top, placement, input: "hover" },
         );
         return;
       }
@@ -420,16 +429,41 @@ export function ArticleNotes({
       dismissSoon();
     }
 
+    function onPointerUp(event: PointerEvent) {
+      if (event.pointerType !== "touch") return;
+      const target = event.target instanceof Element ? event.target : null;
+      if (target?.closest(".notes-highlight-delete")) return;
+      if (!target || !contentElement.contains(target)) {
+        setHoveredHighlight(null);
+        return;
+      }
+
+      const highlighted = highlightAt(event.clientX, event.clientY);
+      setHoveredHighlight(
+        highlighted
+          ? {
+              noteId: highlighted.note.id,
+              left: window.innerWidth / 2,
+              top: window.innerHeight,
+              placement: "above",
+              input: "touch",
+            }
+          : null,
+      );
+    }
+
     function clearHover() {
       setHoveredHighlight(null);
     }
 
     document.addEventListener("pointermove", onPointerMove);
+    document.addEventListener("pointerup", onPointerUp);
     window.addEventListener("scroll", clearHover, true);
     window.addEventListener("resize", clearHover);
     return () => {
       cancelDismiss();
       document.removeEventListener("pointermove", onPointerMove);
+      document.removeEventListener("pointerup", onPointerUp);
       window.removeEventListener("scroll", clearHover, true);
       window.removeEventListener("resize", clearHover);
     };
@@ -586,6 +620,7 @@ export function ArticleNotes({
             className="notes-highlight-delete"
             data-color={hoveredNote.color ?? "yellow"}
             data-placement={hoveredHighlight.placement}
+            data-input={hoveredHighlight.input}
             aria-label={`Remove ${HIGHLIGHT_COLOR_LABELS[
               hoveredNote.color ?? "yellow"
             ].toLowerCase()} highlight`}
@@ -593,8 +628,12 @@ export function ArticleNotes({
               left: hoveredHighlight.left,
               top: hoveredHighlight.top,
             }}
-            onPointerDown={(event) => event.preventDefault()}
-            onPointerLeave={() => setHoveredHighlight(null)}
+            onPointerDown={(event) => {
+              if (event.pointerType !== "touch") event.preventDefault();
+            }}
+            onPointerLeave={(event) => {
+              if (event.pointerType !== "touch") setHoveredHighlight(null);
+            }}
             onClick={removeHoveredHighlight}
           >
             <Trash2 size={15} aria-hidden="true" />
