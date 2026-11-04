@@ -1,0 +1,16 @@
+{
+  "name": "mfe-shared",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/studying/mfe-shared",
+  "projectType": "library",
+  "tags": ["scope:studying", "type:lib"],
+  "targets": {
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm vitest run --config apps/studying/mfe-shared/vitest.config.ts",
+        "cwd": "{workspaceRoot}"
+      }
+    }
+  }
+}
