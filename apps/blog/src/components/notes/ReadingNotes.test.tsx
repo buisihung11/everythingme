@@ -264,6 +264,28 @@ describe("reader notebook", () => {
       "Highlight removed",
     );
   });
+  it("shows a remove button when tapping a saved highlight on touch", () => {
+    mockHighlightRect();
+    render(<TestArticle />);
+    selectPassage();
+    fireEvent.click(screen.getByRole("button", { name: "Highlight blue now" }));
+
+    fireEvent.pointerUp(screen.getByTestId("passage"), {
+      clientX: 30,
+      clientY: 18,
+      pointerType: "touch",
+    });
+    const remove = screen.getByRole("button", {
+      name: "Remove blue highlight",
+    });
+    expect(remove.getAttribute("data-input")).toBe("touch");
+    fireEvent.click(remove);
+
+    expect(readNotes(localStorage)).toEqual([]);
+    expect(screen.getByRole("status").textContent).toContain(
+      "Highlight removed",
+    );
+  });
   it("shows one promoted quick toolbar without the variant harness", () => {
     render(<TestArticle />);
     selectPassage();
