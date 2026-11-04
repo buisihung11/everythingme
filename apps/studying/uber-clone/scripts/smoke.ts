@@ -266,6 +266,16 @@ async function testLateAccept() {
     status === 422 || status === 404,
     `late accept returns 422 or 404 (got ${status})`,
   );
+
+  const driversRes = await fetch(`${LOCATION_URL}/drivers`);
+  const driversData = (await driversRes.json()) as {
+    drivers: Array<{ id: string; status: string }>;
+  };
+  const lateDriver = driversData.drivers.find((d) => d.id === driver);
+  assert(
+    lateDriver?.status === 'available',
+    `late accept must not leave driver busy (got ${lateDriver?.status})`,
+  );
 }
 
 // ── Fare estimate sanity ──────────────────────────────────────────────────────

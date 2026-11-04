@@ -7,6 +7,7 @@
     "dev": "concurrently -k -n ride,matching,location,web -c cyan,green,yellow,magenta \"tsx watch --clear-screen=false services/ride-service/src/index.ts\" \"tsx watch --clear-screen=false services/ride-matching-service/src/index.ts\" \"tsx watch --clear-screen=false services/location-service/src/index.ts\" \"vite\"",
     "build": "vite build",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run --config vitest.config.ts",
     "infra:up": "docker compose up -d",
     "infra:down": "docker compose down",
     "db:setup": "tsx scripts/db-setup.ts",
