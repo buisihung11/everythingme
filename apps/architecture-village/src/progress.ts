@@ -88,14 +88,11 @@ export function recordFinal(p: ProgressV4, villageId: VillageId, score: number, 
 function object(v: unknown): v is Record<string, unknown> {
   return !!v && typeof v === 'object' && !Array.isArray(v);
 }
-function keys(v: Record<string, unknown>, expected: string[]): boolean {
-  return Object.keys(v).length === expected.length && expected.every(k => Object.hasOwn(v, k));
-}
 const integer = (v: unknown, max: number) => typeof v === 'number' && Number.isInteger(v) && v >= 0 && v <= max;
 const tags = (v: unknown) => Array.isArray(v) && v.length <= 40 && v.every(t => typeof t === 'string' && t.length <= 150);
 
 function validStopProgress(raw: unknown): raw is StopProgress {
-  if (!object(raw) || !keys(raw, Object.keys(blankStop()))) return false;
+  if (!object(raw)) return false;
   if (!integer(raw.challengeAttempts, 100000) || !integer(raw.quizBest, 100) || !integer(raw.quizAttempts, 100000)) return false;
   if (raw.quizAttempts === 0 && raw.quizBest !== 0) return false;
   if (!(raw.completedAt === null || typeof raw.completedAt === 'string' && raw.completedAt.length <= 40 && Number.isFinite(Date.parse(raw.completedAt)))) return false;
@@ -104,20 +101,62 @@ function validStopProgress(raw: unknown): raw is StopProgress {
 }
 
 function validFinal(raw: unknown): raw is FinalProgress {
-  return object(raw) && keys(raw, ['best', 'attempts', 'weakTags']) && integer(raw.best, 100) && integer(raw.attempts, 100000) && tags(raw.weakTags) && (raw.attempts > 0 || raw.best === 0);
+  return object(raw) && integer(raw.best, 100) && integer(raw.attempts, 100000) && tags(raw.weakTags) && (raw.attempts > 0 || raw.best === 0);
 }
 
+function readStopProgress(raw: unknown): StopProgress | null {
+  if (!validStopProgress(raw)) return null;
+  return {
+    challengeAttempts: raw.challengeAttempts,
+    quizBest: raw.quizBest,
+    quizAttempts: raw.quizAttempts,
+    completedAt: raw.completedAt,
+    weakTags: [...raw.weakTags],
+  };
+}
+
+function readFinal(raw: unknown): FinalProgress | null {
+  if (!validFinal(raw)) return null;
+  return { best: raw.best, attempts: raw.attempts, weakTags: [...raw.weakTags] };
+}
+
+/**
+ * Accepts a v4 snapshot even when the curriculum has gained or lost stops,
+ * villages, or tool cards. Known scores are copied onto a clean ProgressV4;
+ * missing keys start blank. Present-but-corrupt stop/final records still fail.
+ */
 export function validateProgress(value: unknown, c: Curriculum): ProgressV4 {
   const fail = () => { throw new Error('Backup is invalid or uses a different curriculum version. Current progress was kept.'); };
-  if (!object(value) || !keys(value, ['version', 'stops', 'discoveredToolCards', 'finalIncidents', 'lastVillageId', 'updatedAt']) || value.version !== 4) return fail();
-  if (!object(value.stops) || !keys(value.stops, c.stops.map(stop => stop.id))) return fail();
-  if (!Array.isArray(value.discoveredToolCards) || value.discoveredToolCards.some(id => typeof id !== 'string' || !c.toolCards.some(card => card.id === id))) return fail();
-  if (!object(value.finalIncidents) || !keys(value.finalIncidents, c.villages.map(village => village.id))) return fail();
-  if (!c.villages.some(village => village.id === value.lastVillageId)) return fail();
-  if (typeof value.updatedAt !== 'string' || value.updatedAt.length > 40 || !Number.isFinite(Date.parse(value.updatedAt))) return fail();
-  for (const raw of Object.values(value.stops)) if (!validStopProgress(raw)) return fail();
-  for (const raw of Object.values(value.finalIncidents)) if (!validFinal(raw)) return fail();
-  return structuredClone(value) as ProgressV4;
+  if (!object(value) || value.version !== 4 || !object(value.stops)) return fail();
+  if (value.discoveredToolCards !== undefined && !Array.isArray(value.discoveredToolCards)) return fail();
+  if (value.finalIncidents !== undefined && !object(value.finalIncidents)) return fail();
+
+  const next = newProgress(c);
+  for (const stop of c.stops) {
+    if (!Object.hasOwn(value.stops, stop.id)) continue;
+    const parsed = readStopProgress(value.stops[stop.id]);
+    if (!parsed) return fail();
+    next.stops[stop.id] = parsed;
+  }
+
+  const cards = Array.isArray(value.discoveredToolCards) ? value.discoveredToolCards : [];
+  next.discoveredToolCards = [...new Set(cards.filter((id): id is string => typeof id === 'string' && c.toolCards.some(card => card.id === id)))];
+
+  const incidents = object(value.finalIncidents) ? value.finalIncidents : {};
+  for (const village of c.villages) {
+    if (!Object.hasOwn(incidents, village.id)) continue;
+    const parsed = readFinal(incidents[village.id]);
+    if (!parsed) return fail();
+    next.finalIncidents[village.id] = parsed;
+  }
+
+  if (c.villages.some(village => village.id === value.lastVillageId)) {
+    next.lastVillageId = value.lastVillageId as VillageId;
+  }
+  if (typeof value.updatedAt === 'string' && value.updatedAt.length <= 40 && Number.isFinite(Date.parse(value.updatedAt))) {
+    next.updatedAt = value.updatedAt;
+  }
+  return next;
 }
 
 export function parseBackup(text: string, c: Curriculum): ProgressV4 {
@@ -134,11 +173,12 @@ function migrateV3(raw: unknown, c: Curriculum): ProgressV4 | null {
   if (!object(raw) || raw.version !== 3 || !object(raw.stops) || !Array.isArray(raw.discoveredToolCards)) return null;
   const next = newProgress(c);
   for (const stop of stopsForVillage(c, 'foundation')) {
-    const legacy = raw.stops[stop.id];
-    if (validStopProgress(legacy)) next.stops[stop.id] = structuredClone(legacy);
+    const parsed = readStopProgress(raw.stops[stop.id]);
+    if (parsed) next.stops[stop.id] = parsed;
   }
   next.discoveredToolCards = raw.discoveredToolCards.filter(id => typeof id === 'string' && c.toolCards.some(card => card.id === id));
-  if (validFinal((raw as ProgressV3).finalIncident)) next.finalIncidents.foundation = structuredClone((raw as ProgressV3).finalIncident);
+  const foundationFinal = readFinal((raw as ProgressV3).finalIncident);
+  if (foundationFinal) next.finalIncidents.foundation = foundationFinal;
   next.updatedAt = new Date().toISOString();
   return next;
 }
