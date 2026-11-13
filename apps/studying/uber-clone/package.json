@@ -13,7 +13,8 @@
     "bootstrap": "tsx scripts/bootstrap-sfn-local.ts",
     "seed": "tsx scripts/seed-drivers.ts",
     "cdk:synth": "cd infra/cdk && npx cdk synth",
-    "smoke": "tsx scripts/smoke.ts"
+    "smoke": "tsx scripts/smoke.ts",
+    "test": "vitest run --config vitest.config.ts"
   },
   "dependencies": {
     "@aws-sdk/client-sfn": "^3.800.0",
